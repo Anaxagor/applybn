@@ -56,20 +56,16 @@ class DataIQSKLearn:
         match self.model_type:
 
             case "xgboost":
-                probabilities = torch.tensor(
-                    clf.predict_proba(x, iteration_range=(0, iteration)),
-                    device=device,
-                )
+                params = dict(iteration_range=(0, iteration))
             case "catboost":
-                probabilities = torch.tensor(
-                    clf.predict_proba(x, ntree_start=0, ntree_end=iteration),
-                    device=device,
-                )
+                params = dict(ntree_start=0, ntree_end=iteration)
             case _:
-                probabilities = torch.tensor(
-                    clf.predict_proba(x),
-                    device=device,
-                )
+                params = dict()
+
+            probabilities = torch.tensor(
+                clf.predict_proba(x, **params),
+                device=device,
+            )
 
         # one hot encode the labels
         y = torch.nn.functional.one_hot(

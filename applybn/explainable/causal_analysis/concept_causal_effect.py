@@ -51,17 +51,18 @@ class ConceptCausalExplainer:
         return confidence, aleatoric_uncertainty
 
     @staticmethod
-    def perform_clustering(D: pd.DataFrame, num_clusters: int) -> np.ndarray:
+    def perform_clustering(D: pd.DataFrame, num_clusters: int, random_state=42) -> np.ndarray:
         """Perform KMeans clustering on the dataset.
 
         Args:
             D: The dataset for clustering (without index column).
             num_clusters: The number of clusters to form.
+            random_state: Seed for KMeans.
 
         Returns:
             Array of cluster labels.
         """
-        kmeans = KMeans(n_clusters=num_clusters, random_state=42)
+        kmeans = KMeans(n_clusters=num_clusters, random_state=random_state)
         clusters = kmeans.fit_predict(D)
         return clusters
 
@@ -72,6 +73,7 @@ class ConceptCausalExplainer:
         clusters: np.ndarray,
         auc_threshold: float,
         k_min_cluster_size: int,
+        random_state=42,
     ) -> list:
         """Evaluate discriminability of clusters using an SVM and AUC.
 
@@ -81,6 +83,7 @@ class ConceptCausalExplainer:
             clusters: Cluster labels from perform_clustering.
             auc_threshold: A threshold for AUC to consider a cluster discriminative.
             k_min_cluster_size: Minimum cluster size for evaluation.
+            random_state: Seed for splitting and SVC
 
         Returns:
             A list of dictionaries containing information about discriminative clusters.
@@ -101,10 +104,10 @@ class ConceptCausalExplainer:
                 y_train = np.concatenate([y_cluster, y_N])
                 # Split into training and validation sets
                 X_train_svm, X_val_svm, y_train_svm, y_val_svm = train_test_split(
-                    X_train, y_train, test_size=0.3, random_state=42
+                    X_train, y_train, test_size=0.3, random_state=random_state
                 )
                 # Train SVM
-                S_i = SVC(kernel="linear", probability=True, random_state=42)
+                S_i = SVC(kernel="linear", probability=True, random_state=random_state)
                 S_i.fit(X_train_svm, y_train_svm)
                 # Evaluate discriminability using AUC
                 y_scores = S_i.decision_function(X_val_svm)

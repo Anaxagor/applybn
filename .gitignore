@@ -161,3 +161,4 @@ cython_debug/
 .idea/
 causal_model.png
 poetry.lock
+.DS_Store

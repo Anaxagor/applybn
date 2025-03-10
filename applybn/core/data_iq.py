@@ -62,10 +62,10 @@ class DataIQSKLearn:
             case _:
                 params = dict()
 
-            probabilities = torch.tensor(
-                clf.predict_proba(x, **params),
-                device=device,
-            )
+        probabilities = torch.tensor(
+            clf.predict_proba(x, **params),
+            device=device,
+        )
 
         # one hot encode the labels
         y = torch.nn.functional.one_hot(

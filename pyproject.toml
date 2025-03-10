@@ -26,6 +26,7 @@ opencv-python = "4.11.0.86"
 # causal inference libraries
 econml = "0.15.1"
 pgmpy = "0.1.26"
+bamt = "1.2.72"
 
 # bayesian tools
 bamt = "^1.2.0"

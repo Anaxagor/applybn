@@ -12,4 +12,4 @@ def test_data_generator_fit(imbalanced_data):
     
     assert dg.bn is not None
     assert hasattr(dg.bn, 'sample')
-    assert len(dg.bn.nodes) == 3  # 2 features + 1 class
+    assert len(dg.bn.nodes) == 4  # 3 features + 1 class

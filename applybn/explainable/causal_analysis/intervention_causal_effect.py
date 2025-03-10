@@ -1,4 +1,3 @@
-import logging
 from typing import Union
 
 import matplotlib.pyplot as plt
@@ -12,10 +11,9 @@ from sklearn.ensemble import (
 )
 
 from applybn.core.data_iq import DataIQSKLearn
-from applybn.core.logger import Logger
+from applybn.core import get_logger, track
 
-logger_gen = Logger("my_logger", level=logging.INFO)
-logger = logger_gen.get_logger()
+logger = get_logger(__name__)
 
 
 class InterventionCausalExplainer:
@@ -25,6 +23,7 @@ class InterventionCausalExplainer:
         Attributes:
             n_estimators: Number of estimators for Data-IQ.
         """
+        logger.info("Initializing InterventionCausalExplainer with %d estimators", n_estimators)
         self.n_estimators = n_estimators
         self.clf = None
         self.dataiq_train = None
@@ -45,14 +44,15 @@ class InterventionCausalExplainer:
             X: Training data
             y: Training labels
         """
-        logging.info("Training the model.")
+        logger.info("Training the model with %d samples", X.shape[0])
         self.clf = model
         self.clf.fit(X, y)
+        logger.info("Model training complete.")
 
-    def _compute_confidence_uncertainty(self, X, y, suffix):
+    def _compute_confidence_uncertainty(self, X, y, suffix: str):
         """Helper to compute confidence and uncertainty for train/test data using Data-IQ."""
         data_type = "training" if suffix == "train" else "test"
-        logging.info(
+        logger.info(
             f"Computing confidence and uncertainty on {data_type} data using Data-IQ."
         )
 
@@ -73,12 +73,12 @@ class InterventionCausalExplainer:
 
     def estimate_feature_impact(self, X, random_state=42):
         """Estimate the causal effect of each feature on the model's confidence using training data."""
-        logging.info(
+        logger.info(
             "Estimating feature impact using causal inference on training data."
         )
         self.feature_effects = {}
-        for feature in X.columns:
-            logging.info(f"Estimating effect of feature '{feature}'.")
+        for feature in track(X.columns, description="Estimating feature impacts"):
+            logger.debug(f"Estimating effect of feature '{feature}'.")
             treatment = X[feature].values
             outcome = self.confidence_train
             covariates = X.drop(columns=[feature])
@@ -97,7 +97,7 @@ class InterventionCausalExplainer:
         self.feature_effects = (
             pd.Series(self.feature_effects).abs().sort_values(ascending=False)
         )
-        logging.info("Feature effects estimated.")
+        logger.info("Feature effects estimated.")
 
     def plot_aleatoric_uncertainty(self, before_intervention: bool = True):
         """Plot aleatoric uncertainty for test data before and after intervention."""
@@ -144,7 +144,7 @@ class InterventionCausalExplainer:
             raise ValueError("Feature effects have not been estimated yet.")
 
         top_features = self.feature_effects.head(5).index.tolist()
-        logging.info(f"Top {len(top_features)} most impactful features: {top_features}")
+        logger.info(f"Top {len(top_features)} most impactful features: {top_features}")
 
         # Compute confidence on test data before intervention
         self.compute_confidence_uncertainty_test(X=X_test, y=y_test)
@@ -155,7 +155,7 @@ class InterventionCausalExplainer:
 
         original_feature_values_test = X_test[top_features].copy()
 
-        for feature in top_features:
+        for feature in track(top_features, description="Performing interventions"):
             plt.figure(figsize=(10, 5))
             plt.hist(
                 original_feature_values_test[feature],
@@ -164,7 +164,7 @@ class InterventionCausalExplainer:
                 label="Before Intervention",
             )
 
-            logging.info(f"Performing intervention on '{feature}' in test data.")
+            logger.debug(f"Performing intervention on '{feature}' in test data.")
             min_val = original_feature_values_test[feature].min()
             max_val = original_feature_values_test[feature].max()
             np.random.seed(42)
@@ -214,7 +214,7 @@ class InterventionCausalExplainer:
 
         self.plot_aleatoric_uncertainty()
 
-        logging.info(
+        logger.info(
             "Intervention complete. Observed changes in model confidence on test data."
         )
 
@@ -232,3 +232,4 @@ class InterventionCausalExplainer:
         self.estimate_feature_impact(X=X_train)
         self.plot_top_feature_effects()
         self.perform_intervention(X_test=X_test, y_test=y_test)
+

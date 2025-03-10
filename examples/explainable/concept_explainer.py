@@ -9,18 +9,13 @@ This script demonstrates how to:
 Run this script to see how the methods can be chained together for end-to-end analysis.
 """
 
-import logging
-
 import pandas as pd
+from rich import print as rprint
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-from applybn.core.logger import Logger
 from applybn.explainable.causal_analysis import ConceptCausalExplainer
-
-logger_gen = Logger("my_logger", level=logging.DEBUG)
-logger = logger_gen.get_logger()
 
 
 def load_and_preprocess_data():
@@ -142,7 +137,7 @@ def main():
     selected_features_per_concept = explainer.extract_concept_meanings(
         D, cluster_concepts, original_X
     )
-    logger.info(f"\nConcept feature details: {selected_features_per_concept}")
+    rprint(f"\nConcept feature details: {selected_features_per_concept}")
 
 
 if __name__ == "__main__":

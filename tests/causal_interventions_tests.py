@@ -7,10 +7,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 
 from applybn.explainable.causal_analysis import InterventionCausalExplainer
-from applybn.core.logger import Logger
-
-logger_gen = Logger("test_logger", level=logging.INFO)
-logger = logger_gen.get_logger()
 
 
 class TestInterventionCausalExplainer(unittest.TestCase):

@@ -1,76 +1,63 @@
-from rich.progress import (
-    Progress,
-    BarColumn,
-    TextColumn,
-    TimeElapsedColumn,
-    TimeRemainingColumn,
-)
+from typing import Iterable, Optional, Union, Any, Callable
+from rich.progress import Progress, TextColumn, BarColumn, TaskProgressColumn, TimeRemainingColumn
+from rich.console import Console
+from contextlib import contextmanager
+import time
 
+class ProgressManager:
+    """Unified interface for progress bars across the library."""
 
-class ProgressBar:
-    """
-    A class to use Rich progress bar across all modules.
-
-    Methods:
-        create_task(description, total): Creates a progress task with a description and total steps.
-        update_task(task_id, advance): Advances the progress of a task.
-        start(): Starts the progress bar.
-        stop(): Stops the progress bar.
-
-    Usage Examples:
-        >>> pb = ProgressBar()
-        >>> task_id = pb.create_task("Processing", total=100)
-        >>> pb.start()
-        >>> for i in range(100):
-        >>>     pb.update_task(task_id, advance=1)
-        >>> pb.stop()
-    """
-
-    def __init__(self):
-        """
-        Initializes the ProgressBar with a rich progress instance.
-        """
-        self.progress = Progress(
-            TextColumn("[progress.description]{task.description}"),
+    @staticmethod
+    def create_progress() -> Progress:
+        """Create a Rich Progress instance with a standard layout."""
+        return Progress(
+            TextColumn("[bold blue]{task.description}"),
             BarColumn(),
-            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-            TimeElapsedColumn(),
-            TimeRemainingColumn(),
+            TaskProgressColumn(),
+            TimeRemainingColumn()
         )
-        self.task_id = None
 
-    def create_task(self, description, total):
+    @staticmethod
+    def track(iterable: Iterable,
+              description: str = "Processing",
+              total: Optional[int] = None) -> Iterable:
         """
-        Creates a progress task with a description and total steps.
+        Iterate through an iterable with a progress bar.
 
-        Parameters:
-            description (str): Description of the task.
-            total (int): Total steps for the task.
+        Args:
+            iterable: The iterable to track
+            description: Description for the progress bar
+            total: Total number of items (calculated if not provided)
 
         Returns:
-            int: Task ID of the created task.
+            Tracked iterable
         """
-        self.task_id = self.progress.add_task(description, total=total)
-        return self.task_id
+        with ProgressManager.create_progress() as progress:
+            task_id = progress.add_task(description, total=total or len(list(iterable)))
+            for item in iterable:
+                yield item
+                progress.update(task_id, advance=1)
 
-    def update_task(self, task_id, advance):
+    @staticmethod
+    @contextmanager
+    def progress_context(description: str = "Processing", total: int = 100):
         """
-        Advances the progress of a task.
+        Context manager for manual progress tracking.
 
-        Parameters:
-            task_id (int): ID of the task to update.
-            advance (int): Number of steps to advance.
-        """
-        self.progress.update(task_id, advance=advance)
+        Args:
+            description: Description for the progress bar
+            total: Total number of steps
 
-    def start(self):
+        Yields:
+            A function to update progress
         """
-        Starts the progress bar.
-        """
-        self.progress.start()
+        with ProgressManager.create_progress() as progress:
+            task_id = progress.add_task(description, total=total)
 
-    def stop(self):
-        """
-        Stops the progress bar.
-        """
-        self.progress.stop()
+            def update(advance: int = 1):
+                progress.update(task_id, advance=advance)
+
+            yield update
+
+track = ProgressManager.track
+progress_context = ProgressManager.progress_context

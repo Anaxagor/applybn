@@ -5,11 +5,8 @@ from sklearn.ensemble import (
     RandomForestClassifier,
 )
 
-from applybn.core.logger import Logger
 from applybn.explainable.causal_analysis import InterventionCausalExplainer
 
-logger_gen = Logger("my_logger", level=logging.INFO)
-logger = logger_gen.get_logger()
 
 
 # Example data loading function (replace with actual data)

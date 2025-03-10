@@ -70,15 +70,16 @@ class CausalCNNExplainer:
 
     def _build_dag(self):
         """Builds a simple DAG structure, where each layer depends on the previous one."""
-        for idx, (name, layer) in enumerate(self.conv_layers):
-            num_filters = layer.out_channels
-            self.dag[idx] = {
+        self.dag = {
+            idx: {
                 "name": name,
                 "layer": layer,
-                "filters": list(range(num_filters)),
+                "filters": list(range(layer.out_channels)),
                 "parents": [idx - 1] if idx > 0 else [],
-                "children": [idx + 1] if idx < len(self.conv_layers) - 1 else [],
+                "children": [idx + 1] if idx < len(self.conv_layers) - 1 else []
             }
+            for idx, (name, layer) in enumerate(self.conv_layers)
+        }
 
     def _initialize_importances(self):
         """Initializes filter importance arrays for each layer."""

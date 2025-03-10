@@ -56,11 +56,36 @@ theme:
     code: Roboto Mono
 
 nav:
-  - Home: index.md
-  - Getting Started: getting-started.md
-  - Installation: installation.md
+  - User Guide:
+    - index.md
+    - user-guide/getting-started.md
+    - user-guide/installation.md
+    # Add concepts and theoretical background?
+  
   - API Reference:
-      - logger: reference/logger.md
+      - Core:
+          - api/core/core.md
+          - logger: api/core/logger.md
+          # - exceptions: api/core/exceptions.md
+          # - progress_bar: api/core/progress_bar.md
+      - Feature extraction: api/feature_extraction.md
+      - Feature selection: api/feature_selection.md
+      - BN oversampling: api/bn_oversampling.md
+      - Outlier detection:
+          - api/outlier_detection/outlier_detection.md
+          - Tabular outlier detection: api/outlier_detection/tabular_outliers.md
+          - Time series outlier detection: api/outlier_detection/ts_outliers.md
+      - Synthetic data generation: api/synthetic_data_generation.md
+      - Pipeline creation: api/pipeline_creation.md
+  - Examples:
+      - Tabular Data: examples/tabular_data.md
+      - Time Series Data: examples/time_series_data.md
+      - Synthetic Data Generation: examples/synthetic_data_generation.md
+      - Pipeline Creation: examples/pipeline_creation.md
+
+  - Development and Contribution:
+      - development/contributing.md
+
 #extra:
 #  social:
 #    - icon: fontawesome/brands/github
@@ -73,5 +98,14 @@ markdown_extensions:
   - codehilite
   - footnotes
   - meta
+  - pymdownx.tasklist:
+      custom_checkbox: true
   - toc:
       permalink: True
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences

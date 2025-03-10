@@ -51,7 +51,9 @@ class ConceptCausalExplainer:
         return confidence, aleatoric_uncertainty
 
     @staticmethod
-    def perform_clustering(D: pd.DataFrame, num_clusters: int, random_state=42) -> np.ndarray:
+    def perform_clustering(
+        D: pd.DataFrame, num_clusters: int, random_state=42
+    ) -> np.ndarray:
         """Perform KMeans clustering on the dataset.
 
         Args:

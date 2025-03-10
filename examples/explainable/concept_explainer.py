@@ -128,13 +128,15 @@ def main():
     )
 
     # Generate visualizations
-    explainer.plot_tornado(effects_confidence,
-                           title="Causal Effects on Model Confidence",
-                           figsize=(10, 8))
+    explainer.plot_tornado(
+        effects_confidence, title="Causal Effects on Model Confidence", figsize=(10, 8)
+    )
 
-    explainer.plot_tornado(effects_uncertainty,
-                           title="Causal Effects on Model Uncertainty",
-                           figsize=(10, 8))
+    explainer.plot_tornado(
+        effects_uncertainty,
+        title="Causal Effects on Model Uncertainty",
+        figsize=(10, 8),
+    )
 
     # Extract and log concept meanings
     selected_features_per_concept = explainer.extract_concept_meanings(

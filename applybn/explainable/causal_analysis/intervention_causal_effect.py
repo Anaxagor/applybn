@@ -19,27 +19,12 @@ logger = logger_gen.get_logger()
 
 
 class InterventionCausalExplainer:
-    def __init__(
-        self,
-        X_train: pd.DataFrame,
-        y_train: pd.Series,
-        X_test: pd.DataFrame,
-        y_test: pd.Series,
-        n_estimators=10,
-    ):
-        """Initialize the ModelInterpreter with training and test data.
+    def __init__(self, n_estimators=10):
+        """Initialize the ModelInterpreter.
 
         Attributes:
-            X_train: Training features.
-            y_train: Training labels.
-            X_test: Test features.
-            y_test: Test labels.
             n_estimators: Number of estimators for Data-IQ.
         """
-        self.X_train = X_train.copy()
-        self.y_train = y_train.copy()
-        self.X_test = X_test.copy()
-        self.y_test = y_test.copy()
         self.n_estimators = n_estimators
         self.clf = None
         self.dataiq_train = None
@@ -52,51 +37,57 @@ class InterventionCausalExplainer:
         self.confidence_test_before_intervention = None
         self.aleatoric_uncertainty_test_before_intervention = None
 
-    def train_model(self, model: Union[BaseEstimator, ClassifierMixin]):
+    def train_model(self, model: Union[BaseEstimator, ClassifierMixin], X, y):
         """Train the model on the training data.
 
         Args:
             model: The model to train
+            X: Training data
+            y: Training labels
         """
         logging.info("Training the model.")
         self.clf = model
-        self.clf.fit(self.X_train, self.y_train)
+        self.clf.fit(X, y)
 
-    def compute_confidence_uncertainty_train(self):
-        """Compute model confidence and aleatoric uncertainty on training data using Data-IQ."""
+    def _compute_confidence_uncertainty(self, X, y, suffix):
+        """Helper to compute confidence and uncertainty for train/test data using Data-IQ."""
+        data_type = "training" if suffix == "train" else "test"
         logging.info(
-            "Computing confidence and uncertainty on training data using Data-IQ."
+            f"Computing confidence and uncertainty on {data_type} data using Data-IQ."
         )
-        self.dataiq_train = DataIQSKLearn(X=self.X_train, y=self.y_train)
-        self.dataiq_train.on_epoch_end(clf=self.clf, iteration=self.n_estimators)
-        self.confidence_train = self.dataiq_train.confidence
-        self.aleatoric_uncertainty_train = self.dataiq_train.aleatoric
 
-    def compute_confidence_uncertainty_test(self):
+        dataiq = DataIQSKLearn(X=X, y=y)
+        dataiq.on_epoch_end(clf=self.clf, iteration=self.n_estimators)
+
+        setattr(self, f"dataiq_{suffix}", dataiq)
+        setattr(self, f"confidence_{suffix}", dataiq.confidence)
+        setattr(self, f"aleatoric_uncertainty_{suffix}", dataiq.aleatoric)
+
+    def compute_confidence_uncertainty_train(self, X, y):
+        """Compute model confidence and aleatoric uncertainty on training data using Data-IQ."""
+        self._compute_confidence_uncertainty(X, y, "train")
+
+    def compute_confidence_uncertainty_test(self, X, y):
         """Compute model confidence and aleatoric uncertainty on test data using Data-IQ."""
-        logging.info("Computing confidence and uncertainty on test data using Data-IQ.")
-        self.dataiq_test = DataIQSKLearn(X=self.X_test, y=self.y_test)
-        self.dataiq_test.on_epoch_end(clf=self.clf, iteration=self.n_estimators)
-        self.confidence_test = self.dataiq_test.confidence
-        self.aleatoric_uncertainty_test = self.dataiq_test.aleatoric
+        self._compute_confidence_uncertainty(X, y, "test")
 
-    def estimate_feature_impact(self):
+    def estimate_feature_impact(self, X, random_state=42):
         """Estimate the causal effect of each feature on the model's confidence using training data."""
         logging.info(
             "Estimating feature impact using causal inference on training data."
         )
         self.feature_effects = {}
-        for feature in self.X_train.columns:
+        for feature in X.columns:
             logging.info(f"Estimating effect of feature '{feature}'.")
-            treatment = self.X_train[feature].values
+            treatment = X[feature].values
             outcome = self.confidence_train
-            covariates = self.X_train.drop(columns=[feature])
+            covariates = X.drop(columns=[feature])
 
             est = CausalForestDML(
                 model_y=RandomForestRegressor(),
                 model_t=RandomForestRegressor(),
                 discrete_treatment=False,
-                random_state=42,
+                random_state=random_state,
             )
             est.fit(Y=outcome, T=treatment, X=covariates)
             te = est.const_marginal_effect(covariates).mean()
@@ -147,7 +138,7 @@ class InterventionCausalExplainer:
         plt.tight_layout()
         plt.show()
 
-    def perform_intervention(self):
+    def perform_intervention(self, X_test, y_test):
         """Perform an intervention on the top 5 most impactful features in the test data and observe changes."""
         if self.feature_effects is None:
             raise ValueError("Feature effects have not been estimated yet.")
@@ -156,13 +147,13 @@ class InterventionCausalExplainer:
         logging.info(f"Top {len(top_features)} most impactful features: {top_features}")
 
         # Compute confidence on test data before intervention
-        self.compute_confidence_uncertainty_test()
+        self.compute_confidence_uncertainty_test(X=X_test, y=y_test)
         self.confidence_test_before_intervention = self.confidence_test.copy()
         self.aleatoric_uncertainty_test_before_intervention = (
             self.aleatoric_uncertainty_test.copy()
         )
 
-        original_feature_values_test = self.X_test[top_features].copy()
+        original_feature_values_test = X_test[top_features].copy()
 
         for feature in top_features:
             plt.figure(figsize=(10, 5))
@@ -178,12 +169,12 @@ class InterventionCausalExplainer:
             max_val = original_feature_values_test[feature].max()
             np.random.seed(42)
             new_values = np.random.uniform(
-                low=min_val, high=max_val, size=self.X_test.shape[0]
+                low=min_val, high=max_val, size=X_test.shape[0]
             )
-            self.X_test[feature] = new_values
+            X_test[feature] = new_values
 
             plt.hist(
-                self.X_test[feature],
+                X_test[feature],
                 bins=30,
                 alpha=0.5,
                 color="orange",
@@ -197,7 +188,7 @@ class InterventionCausalExplainer:
             plt.legend()
             plt.show()
 
-        self.compute_confidence_uncertainty_test()
+        self.compute_confidence_uncertainty_test(X=X_test, y=y_test)
 
         plt.figure(figsize=(10, 5))
         plt.hist(
@@ -227,10 +218,17 @@ class InterventionCausalExplainer:
             "Intervention complete. Observed changes in model confidence on test data."
         )
 
-    def interpret(self, model):
+    def interpret(
+        self,
+        model,
+        X_train: pd.DataFrame,
+        y_train: pd.Series,
+        X_test: pd.DataFrame,
+        y_test: pd.Series,
+    ):
         """Run the full interpretation process."""
-        self.train_model(model=model)
-        self.compute_confidence_uncertainty_train()
-        self.estimate_feature_impact()
+        self.train_model(model=model, X=X_train, y=y_train)
+        self.compute_confidence_uncertainty_train(X=X_train, y=y_train)
+        self.estimate_feature_impact(X=X_train)
         self.plot_top_feature_effects()
-        self.perform_intervention()
+        self.perform_intervention(X_test=X_test, y_test=y_test)

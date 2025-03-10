@@ -76,7 +76,7 @@ class CausalCNNExplainer:
                 "layer": layer,
                 "filters": list(range(layer.out_channels)),
                 "parents": [idx - 1] if idx > 0 else [],
-                "children": [idx + 1] if idx < len(self.conv_layers) - 1 else []
+                "children": [idx + 1] if idx < len(self.conv_layers) - 1 else [],
             }
             for idx, (name, layer) in enumerate(self.conv_layers)
         }

@@ -11,7 +11,10 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 # Import the causal_explainer module (adjust path as needed)
-from applybn.explainable.nn_layers_importance.cnn_filter_importance import CausalCNNExplainer
+from applybn.explainable.nn_layers_importance.cnn_filter_importance import (
+    CausalCNNExplainer,
+)
+
 
 def train_model(model, train_loader, device, num_epochs=5, lr=0.0001):
     """Trains the given model on the provided data loader.
@@ -59,10 +62,13 @@ def train_model(model, train_loader, device, num_epochs=5, lr=0.0001):
 
         epoch_loss = running_loss / len(train_loader)
         epoch_acc = correct / total
-        print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}, "
-              f"Accuracy: {epoch_acc*100:.2f}%")
+        print(
+            f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}, "
+            f"Accuracy: {epoch_acc*100:.2f}%"
+        )
 
     return model
+
 
 def main():
     # Set device
@@ -75,12 +81,13 @@ def main():
     np.random.seed(42)
 
     # Define transformations (as an example, e.g. CIFAR-10)
-    transform = transforms.Compose([
-        transforms.Resize(224),
-        transforms.ToTensor(),
-        transforms.Normalize((0.485, 0.456, 0.406),
-                             (0.229, 0.224, 0.225))
-    ])
+    transform = transforms.Compose(
+        [
+            transforms.Resize(224),
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+        ]
+    )
 
     # Example: Load CIFAR-10 dataset
     train_dataset = datasets.CIFAR10(
@@ -154,14 +161,23 @@ def main():
     # Plot the results (optional, showing example of usage)
     try:
         import matplotlib.pyplot as plt
+
         plt.figure(figsize=(10, 6))
-        plt.plot([0] + prune_percentages, [baseline_acc * 100] + importance_accuracies,
-                 marker='o', label='Pruning by Importance')
-        plt.plot([0] + prune_percentages, [baseline_acc * 100] + random_accuracies,
-                 marker='s', label='Random Pruning')
-        plt.title('Accuracy vs. Percentage of Filters Pruned')
-        plt.xlabel('Percentage of Filters Pruned')
-        plt.ylabel('Accuracy (%)')
+        plt.plot(
+            [0] + prune_percentages,
+            [baseline_acc * 100] + importance_accuracies,
+            marker="o",
+            label="Pruning by Importance",
+        )
+        plt.plot(
+            [0] + prune_percentages,
+            [baseline_acc * 100] + random_accuracies,
+            marker="s",
+            label="Random Pruning",
+        )
+        plt.title("Accuracy vs. Percentage of Filters Pruned")
+        plt.xlabel("Percentage of Filters Pruned")
+        plt.ylabel("Accuracy (%)")
         plt.legend()
         plt.grid(True)
         plt.show()

@@ -17,7 +17,7 @@ imbalanced-learn = "^0.13.0"
 pgmpy = "0.1.26"
 bamt = "1.2.72"
 setuptools = "76.0.0"
-
+numpy = "1.26.4"
 
 [tool.poetry.dev-dependencies]
 pytest = "7.4.4"

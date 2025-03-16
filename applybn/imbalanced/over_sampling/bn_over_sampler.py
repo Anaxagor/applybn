@@ -90,14 +90,19 @@ class BNOverSampler(BaseOverSampler):
         Returns:
             balanced_data: Balanced dataset containing original and synthetic samples.
         """
-        balanced_data = data.copy()
+        samples = []
         types_dict = self.data_generator_.bn.descriptor['types']
-        for cls in class_counts.index:
-            needed = max(0, target_size - class_counts[cls])
+        
+        # Calculate needed samples for each class
+        needed_samples = (target_size - class_counts).clip(lower=0)
+        
+        # Generate samples for classes requiring augmentation
+        for cls, needed in needed_samples.items():
             if needed > 0:
-                samples = self._generate_samples_for_class(cls, needed, data.columns, types_dict)
-                balanced_data = pd.concat([balanced_data, samples], ignore_index=True)
-        return balanced_data
+                samples.append(self._generate_samples_for_class(cls, needed, data.columns, types_dict))
+        
+        # Combine original data with all generated samples at once
+        return pd.concat([data] + samples, ignore_index=True) if samples else data.copy()
 
     def _fit_resample(
         self,

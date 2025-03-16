@@ -1,16 +1,15 @@
-"""
-Bayesian Network Oversampling Example with Iris Dataset
+"""Bayesian Network Oversampling Example with Iris Dataset.
 
 This module demonstrates using BNOverSampler to address class imbalance while preserving feature
 relationships through Bayesian network modeling. Includes artificial imbalance creation, resampling,
 and logging integration.
 
 Attributes:
-    logger_gen (Logger): Logger configuration object
-    logger (logging.Logger): Configured logger instance
-    oversampler (BNOverSampler): Bayesian network-based resampler
-    X_res (pd.DataFrame): Resampled feature matrix
-    y_res (pd.Series): Balanced target vector
+    logger_gen: Logger configuration object.
+    logger: Configured logger instance.
+    oversampler: Bayesian network-based resampler.
+    X_res: Resampled feature matrix.
+    y_res: Balanced target vector.
 
 Notes:
     - Requires applybn package components
@@ -25,17 +24,17 @@ import logging
 from applybn.imbalanced.over_sampling.bn_over_sampler import BNOverSampler
 from applybn.core.logger import Logger
 
-def create_imbalanced_data(X, y, ratios):
+def create_imbalanced_data(X: pd.DataFrame, y: pd.DataFrame, ratios: dict) -> tuple[pd.DataFrame, pd.Series]:
     """
     Create artificial class imbalance by subsampling majority classes
     
     Args:
-        X (pd.DataFrame): Original feature matrix
-        y (pd.Series): Original target vector
-        ratios (dict): Dictionary mapping class labels to desired sample counts
+        X: Original feature matrix
+        y: Original target vector
+        ratios: Dictionary mapping class labels to desired sample counts
         
     Returns:
-        tuple: (imbalanced_X, imbalanced_y) with specified class distribution
+        tuple with specified class distribution
  
     """
     imbalanced_X = pd.DataFrame()

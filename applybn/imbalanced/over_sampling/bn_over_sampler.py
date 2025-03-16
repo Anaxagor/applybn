@@ -2,97 +2,127 @@ from imblearn.over_sampling.base import BaseOverSampler
 import pandas as pd
 from sklearn.exceptions import NotFittedError
 from applybn.synthetics.bn_synthetic_generator import BNSyntheticGenerator
+import numpy as np
+from typing import Any
+
 
 class BNOverSampler(BaseOverSampler):
-    """
-    A Bayesian Network-based oversampler for handling imbalanced datasets.
-    
+    """A Bayesian Network-based oversampler for handling imbalanced datasets.
+
     This class uses Bayesian Networks to learn the joint probability distribution of features
     and generates synthetic samples for minority classes to balance class distribution.
     Inherits from BaseOverSampler to ensure compatibility with scikit-learn pipelines.
 
-    Parameters
-    ----------
-    class_column : str, default=None
-        Name of the target class column. If None, will attempt to infer from y's name attribute.
+    Args:
+        class_column: Name of the target class column. If None, will attempt to infer from y's
+            name attribute.
+        strategy: Oversampling strategy. Either 'max_class' to match the largest class size or
+            an integer specifying target sample count per class.
+        shuffle: Whether to shuffle the dataset after resampling.
 
-    strategy : str or int, default='max_class'
-        Oversampling strategy:
-        - 'max_class': match minority classes to the size of the largest class
-        - integer: directly specify target number of samples per class
+    Attributes:
+        data_generator_: Fitted Bayesian Network synthetic data generator instance.
 
-    shuffle : bool, default=True
-        Whether to shuffle the dataset after resampling.
-
-    Attributes
-    ----------
-    data_generator_ : BNSyntheticGenerator
-        Fitted Bayesian Network synthetic data generator instance.
-
-    Example
-    -------
-    >>> from applybn.imbalanced.over_sampling.bn_over_sampler import BNOverSampler
-    >>> oversampler = BNOverSampler(class_column='target', strategy='max_class')
-    >>> X_res, y_res = oversampler.fit_resample(X, y)
+    Example:
+        >>> from applybn.imbalanced.over_sampling.bn_over_sampler import BNOverSampler
+        >>> oversampler = BNOverSampler(class_column='target', strategy='max_class')
+        >>> X_res, y_res = oversampler.fit_resample(X, y)
     """
 
     def __init__(self, class_column=None, strategy='max_class', shuffle=True):
-        """
-        Initialize the BNOverSampler with class column, balancing strategy, and shuffle option.
-
-        Parameters
-        ----------
-        class_column : str, optional
-            Name of the target variable column in the dataset.
-            
-        strategy : str or int, optional
-            Determines target sample count for minority classes:
-            - 'max_class' (default): match largest class size
-            - Integer value: explicit target sample count
-            
-        shuffle : bool, optional
-            Whether to shuffle data after resampling (default=True).
-        """
+        """Initialize the BNOverSampler."""
         super().__init__()
         self.class_column = class_column
         self.strategy = strategy
         self.shuffle = shuffle
         self.data_generator_ = BNSyntheticGenerator()
 
-    def _fit_resample(self, X, y, **params):
-        """
-        Resample the dataset using Bayesian Network synthetic generation.
 
-        Parameters
-        ----------
-        X : pandas.DataFrame or array-like
-            Feature matrix
+    def _generate_samples_for_class(self, cls: str|int, needed: int, data_columns: list, types_dict: dict) -> pd.DataFrame:
+        """Generate synthetic samples for a specific minority class.
+
+        Args:
+            cls: Target class value to generate samples for.
+            needed: Number of synthetic samples needed for this class.
+            data_columns: List of column names in the original dataset.
+            types_dict: Dictionary mapping columns to their data types 
+                (e.g., 'disc_num' for discrete numeric).
+
+        Returns:
+            samples: Generated samples with proper data types.
+        """
+        samples = self.data_generator_.bn.sample(
+            needed, 
+            evidence={self.class_column: cls}, 
+            filter_neg=False
+        )[data_columns]
+        if samples.shape[0] < needed:
+            additional = self.data_generator_.bn.sample(needed, evidence={self.class_column: cls}, filter_neg=False)[data_columns]
+            samples = pd.concat([samples, additional.sample(needed - samples.shape[0])])
+        return self._adjust_sample_types(samples, types_dict)
+    
+    def _adjust_sample_types(self, samples: pd.DataFrame, types_dict: dict) -> pd.DataFrame:
+        """Adjust data types of generated samples to match original data.
         
-        y : pandas.Series or array-like
-            Target vector
+        Args:
+            samples: Generated synthetic samples.
+            types_dict: Dictionary mapping columns to their data types.
 
-        Returns
-        -------
-        X_res : pandas.DataFrame
-            Resampled feature matrix
-            
-        y_res : pandas.Series
-            Corresponding resampled target vector
-
-        Raises
-        ------
-        NotFittedError
-            If synthetic generator fails to fit Bayesian Network
-
-        Notes
-        -----
-        1. Combines X and y into single DataFrame for Bayesian Network learning
-        2. Determines target sample sizes based on strategy
-        3. Generates synthetic samples for minority classes using conditional sampling
-        4. Preserves original data types and column names
+        Returns:
+            samples: Samples with corrected data types.
         """
+        disc_num_cols = {col for col, dtype in types_dict.items() if dtype == 'disc_num'}
+        samples = samples.apply(
+            lambda col: col.astype(int) 
+            if col.name in disc_num_cols 
+            else col
+        )
+        return samples
+        
+    def _balance_classes(self, data: pd.DataFrame, class_counts: pd.Series, target_size: int) -> pd.DataFrame:
+        """Generate synthetic samples to balance class distribution.
 
+        Args:
+            data: Original dataset with target class column.
+            class_counts: Count of samples per class.
+            target_size: Target number of samples per class.
 
+        Returns:
+            balanced_data: Balanced dataset containing original and synthetic samples.
+        """
+        balanced_data = data.copy()
+        types_dict = self.data_generator_.bn.descriptor['types']
+        for cls in class_counts.index:
+            needed = max(0, target_size - class_counts[cls])
+            if needed > 0:
+                samples = self._generate_samples_for_class(cls, needed, data.columns, types_dict)
+                balanced_data = pd.concat([balanced_data, samples], ignore_index=True)
+        return balanced_data
+
+    def _fit_resample(
+        self,
+        X: pd.DataFrame | np.ndarray,
+        y: pd.Series | np.ndarray,
+        **params: Any
+    ) -> tuple[pd.DataFrame, pd.Series]:
+        """Resample the dataset using Bayesian Network synthetic generation.
+        Args:
+            X: Feature matrix.
+            y: Target vector.
+
+        Returns:
+            X_res: Resampled feature matrix.
+            y_res: Corresponding resampled target vector.
+
+        Raises:
+            NotFittedError: If synthetic generator fails to fit Bayesian Network.
+
+        Note:
+            1. Combines X and y into single DataFrame for Bayesian Network learning
+            2. Determines target sample sizes based on strategy
+            3. Generates synthetic samples for minority classes using conditional sampling
+            4. Preserves original data types and column names
+        """
 
         # Combine X and y into a DataFrame with class column
         X_df = pd.DataFrame(X) if not isinstance(X, pd.DataFrame) else X.copy()
@@ -111,27 +141,7 @@ class BNOverSampler(BaseOverSampler):
         target_size = class_counts.iloc[0] if self.strategy == 'max_class' else self.strategy
 
         # Generate synthetic samples for minority classes
-        balanced_data = data.copy()
-        types_dict = self.data_generator_.bn.descriptor['types']
-        for cls in class_counts.index:
-            current_count = class_counts[cls]
-            needed = max(0, target_size - current_count)
-            if needed > 0:
-                additional_samples = pd.DataFrame()
-                samples = self.data_generator_.bn.sample(
-                    needed, 
-                    evidence={self.class_column: cls}, filter_neg=False
-                )[data.columns]
-                if samples.shape[0] < needed:
-                    additional_samples = self.data_generator_.bn.sample(
-                    needed, 
-                    evidence={self.class_column: cls}, filter_neg=False
-                )[data.columns]
-                samples = pd.concat([samples, additional_samples.sample(needed - samples.shape[0])])
-                for c in samples.columns:
-                    if types_dict[c] == 'disc_num':
-                        samples[c] = samples[c].astype(int)
-                balanced_data = pd.concat([balanced_data, samples], ignore_index=True)
+        balanced_data = self._balance_classes(data, class_counts, target_size)
         # shuffle data
         if self.shuffle:
             balanced_data = balanced_data.sample(frac=1).reset_index(drop=True)

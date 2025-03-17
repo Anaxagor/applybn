@@ -71,6 +71,19 @@ def train_model(model, train_loader, device, num_epochs=5, lr=0.0001):
 
 
 def main():
+    """
+Main function to demonstrate the CausalCNNExplainer.
+
+    This function sets up a CIFAR-10 classification task, trains a ResNet18 model,
+    explains it using CausalCNNExplainer, and visualizes the results including
+    filter importances, heatmaps, and pruning experiments.
+
+    Args:
+        None
+
+    Returns:
+        None
+    """
     # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")

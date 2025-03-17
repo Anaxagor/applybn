@@ -2,6 +2,15 @@ class BNSyntheticGenerator:
     """Bayesian Network Synthetic Data Generator."""
 
     def __init__(self):
+        """
+Initializes an instance of the class.
+
+    Args:
+        self: The instance being initialized.
+
+    Returns:
+        None
+    """
         pass
 
     def fit(self, data):

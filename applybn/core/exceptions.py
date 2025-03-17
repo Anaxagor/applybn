@@ -21,6 +21,15 @@ class LibraryError(Exception):
     """
 
     def __init__(self, message=None):
+        """
+Initializes the ApplyBNException.
+
+    Args:
+        message: The exception message. If None, a default message is used.
+
+    Returns:
+        None
+    """
         if message is None:
             message = "An error occurred in applybn."
         super().__init__(message)
@@ -42,6 +51,15 @@ class InvalidInputError(LibraryError):
     """
 
     def __init__(self, message=None):
+        """
+Initializes the exception with an optional message.
+
+    Args:
+        message: The exception message. If None, a default message is used.
+
+    Returns:
+        None
+    """
         if message is None:
             message = "Invalid input provided."
         super().__init__(message)
@@ -63,6 +81,15 @@ class OperationFailedError(LibraryError):
     """
 
     def __init__(self, message=None):
+        """
+Initializes a new instance of the exception.
+
+    Args:
+        message: The exception message. If None, a default message is used.
+
+    Returns:
+        None
+    """
         if message is None:
             message = "The operation failed to complete successfully."
         super().__init__(message)
@@ -84,6 +111,15 @@ class ResourceNotFoundError(LibraryError):
     """
 
     def __init__(self, message=None):
+        """
+Initializes a new NotFoundError exception.
+
+    Args:
+        message: The error message to display. If None, a default message is used.
+
+    Returns:
+        None
+    """
         if message is None:
             message = "The requested resource was not found."
         super().__init__(message)

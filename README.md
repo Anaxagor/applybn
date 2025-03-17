@@ -1,69 +1,168 @@
-# applybn
-
-applybn is an open-source multi-purpose framework based on Bayesian networks and Causal networks.
-The main idea is to implement the main functions of data analysis based on understandable and interpretable algorithms of Bayesian networks and causal models.
-![image](https://github.com/user-attachments/assets/996f8e5a-1742-4849-a64f-58b97a4cf17d)
-
-
-**The repository is currently work-in-progress**
-
-## Key Features
-### 1. Anomaly Detection in time-series and tabular data
-#### **Local Outlier Factor (LOF) Based Anomaly Detection**
-   - **Description**: The LOF algorithm computes the local density deviation of a given data point compared to its neighbors, helping identify points that significantly deviate in terms of density.
-   - **How It Works**: On each iteration, `n` random columns are selected, and LOF scores are calculated for each observation in the dataset. These scores are then normalized between 0 and 1.
-   
-#### **Bayesian Network-Based Anomaly Detection**
-   - **Description**: This method leverages the trained Bayesian network to evaluate the conditional distributions of nodes based on their parents, detecting anomalies in the data based on their deviation from expected conditional probabilities.
-   - **How It Works**: During each iteration, a random node and its parents are selected, and an anomaly score is computed based on the conditional distribution of values at that node for each observation. These scores are normalized between 0 and 1, providing a clear metric of anomaly likelihood.
-
-#### **Combined Anomaly Scoring**
-   - **Description**: The final anomaly score for each observation is calculated by combining the normalized LOF scores and Bayesian network scores. This combination allows for both density-based and dependency-based anomalies to be detected simultaneously.
-   - **Formula**: The combined anomaly score for each observation is computed using a pre-defined formula (3.2), which balances both types of anomaly scores.
-
-### 2. **Synthetic Data Generation**
-   - **Class Imbalance Handling**: The framework includes methods for generating synthetic training data when class imbalance is detected in the dataset. Using hybrid Bayesian networks (with Gaussian mixture models), it generates balanced synthetic data, improving model training outcomes.
-   - **Synthetic Test Data Generation**: applybn can generate synthetic test datasets, ensuring the generated samples are representative enough for proper model evaluation. This feature helps address issues when there is a lack of sufficient real test data, using a unique condition to ensure that ranking of model errors on synthetic and real data remains consistent.
+<p align="center"><h1 align="center">APPLYBN</h1></p>
+<p align="center">
+	<a href="https://itmo.ru/"><img src="https://raw.githubusercontent.com/aimclub/open-source-ops/43bb283758b43d75ec1df0a6bb4ae3eb20066323/badges/ITMO_badge.svg"></a>
+	<img src="https://img.shields.io/github/license/Anaxagor/applybn?style=default&logo=opensourceinitiative&logoColor=white&color=blue" alt="license">
+	<a href="https://github.com/ITMO-NSS-team/Open-Source-Advisor"><img src="https://img.shields.io/badge/improved%20by-OSA-blue"></a>
+</p>
+<p align="center">Built with the tools and technologies:</p>
+<p align="center">
+	<img src="https://img.shields.io/badge/Python-3776AB.svg?style=default&logo=Python&logoColor=white"alt="Python">
+	<img src="https://img.shields.io/badge/GitHub%20Actions-2088FF.svg?style=default&logo=GitHub-Actions&logoColor=white"alt="GitHub%20Actions">
+</p>
+<br>
 
 
-### 3. **Feature Selection module**
-  - **Feature Selection** for label prediction.
-  - **Feature Generation** for label prediction enchancement.
+---
+## Overview
 
-### 4. **Explainable Module**
-#### **Causal Analysis for Machine Learning Models**
-   - **Analyzing Model Components**: A structural causal model (SCM) is built to analyze deep learning models, allowing for the pruning of unimportant parts (e.g., filters in CNNs) by evaluating their causal importance.
-   - **Explaining Data Impact on Predictions**: applybn allows for causal inference between features and the model’s confidence scores. By calculating the **Average Causal Effect (ACE)**, it helps identify which features significantly influence model uncertainty, providing valuable insights for improving or debugging models.
+<overview>
+applybn empowers machine learning practitioners to build more reliable and understandable AI systems. It provides tools for data quality, outlier detection, and explainable AI, helping users gain insights into model behavior and ensure trustworthy predictions across diverse applications.
+</overview>
 
-## Work-in-Progress
+---
 
-applybn is actively under development, with key features currently being tested in dedicated branches. Contributions to these features are welcome:
 
-- [Anomaly Detection Module](https://github.com/Anaxagor/applyBN/tree/anomaly-detection-module)
-- [Data Generation Module](https://github.com/Anaxagor/applyBN/tree/data-generation-module)
-- [Feature Selection Module](https://github.com/Anaxagor/applyBN/tree/feature-selection-module)
-- [Explainable Module](https://github.com/Anaxagor/applyBN/tree/explainable-module)
+## Table of contents
+
+- [Core features](#core-features)
+- [Installation](#installation)
+- [Examples](#examples)
+- [Documentation](#documentation)
+- [Getting started](#getting-started)
+- [Contributing](#contributing)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
+- [Contacts](#contacts)
+- [Citation](#citation)
+
+---
+
+## Core features
+
+<corefeatures>
+
+1. **Data Quality**: Tools for assessing data quality via the `dataiq` module.
+2. **Pipeline Creation**: Streamlined pipeline creation with the `pipelinecreator` tool.
+3. **Explainable AI**: Causal effect analysis and neural network layer importance evaluation.
+4. **Outlier/Imbalance Handling**: Robust outlier detection & over-sampling techniques provided.
+5. **Feature Engineering**: Feature selection, extraction, and preprocessing decorators included.
+
+</corefeatures>
+
+---
+
 
 ## Installation
 
-To get started with applybn, clone the repository and install the required dependencies.
+Install applybn using one of the following methods:
 
-```bash
-git clone https://github.com/Anaxagor/applybn.git
-cd applybn
-poetry install
+**Build from source:**
+
+1. Clone the applybn repository:
+```sh
+❯ git clone https://github.com/Anaxagor/applybn
 ```
 
-## Usage Example
+2. Navigate to the project directory:
+```sh
+❯ cd applybn
+```
 
-API is WIP.
+3. Install the project dependencies:
+
+echo 'INSERT-INSTALL-COMMAND-HERE'
+
+
+---
+
+
+## Examples
+
+Examples of how this should work and how it should be used are available in [examples](https://github.com/Anaxagor/applybn/tree/main/examples).
+
+---
+
+
+## Documentation
+
+A detailed applybn description is available in [docs](https://anaxagor.github.io/applybn/).
+
+---
+
+
+## Getting started
+
+### Usage
+
+Run applybn using the following command:
+ 
+ echo 'INSERT-RUN-COMMAND-HERE'
+
+---
+
 
 ## Contributing
 
-Contributions to applybn are welcome! If you’re interested in improving any of the features or testing new branches, please see the `CONTRIBUTING.md` (WIP) file for details.
+
+- **[Report Issues](https://github.com/Anaxagor/applybn/issues )**: Submit bugs found or log feature requests for the applybn project.
+
+- **[Submit Pull Requests](https://github.com/Anaxagor/applybn/blob/main/docs/development/contributing.md )**: To learn more about making a contribution to applybn.
+
+---
+
 
 ## License
 
-applybn is distributed under the MIT License. See the `LICENSE` file for more information.
+This project is protected under the MIT License. For more details, refer to the [LICENSE](https://github.com/Anaxagor/applybn/blob/main/LICENSE) file.
 
-For additional documentation and technical details, visit our [documentation](https://anaxagor.github.io/applybn/).
+---
+
+
+## Acknowledgments
+
+- List any resources, contributors, inspiration, etc. here.
+
+---
+
+
+
+## Contacts
+
+Your contacts. For example:
+
+- [Telegram channel](https://t.me/) answering questions about your project
+- [VK group](<https://vk.com/>) your VK group
+- etc.
+
+---
+
+
+## Citation
+
+If you use this software, please cite it as below.
+
+### APA format:
+
+    Anaxagor (2024). applybn repository [Computer software]. https://github.com/Anaxagor/applybn
+
+### BibTeX format:
+
+    @misc{applybn,
+
+        author = {Anaxagor},
+
+        title = {applybn repository},
+
+        year = {2024},
+
+        publisher = {github.com},
+
+        journal = {github.com repository},
+
+        howpublished = {\url{https://github.com/Anaxagor/applybn.git}},
+
+        url = {https://github.com/Anaxagor/applybn.git}
+
+    }
+
+---

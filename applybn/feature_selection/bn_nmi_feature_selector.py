@@ -8,6 +8,17 @@ import logging
 
 class NMIFeatureSelector(BaseEstimator, SelectorMixin):
 
+    """
+Performs feature selection based on Normalized Mutual Information (NMI).
+
+This class selects features by calculating the NMI between each feature and the target variable,
+and keeping only those features with an NMI above a specified threshold.
+
+Attributes:
+    threshold (float): The minimum NMI to include a feature in the selection.
+    bin_count (int): Number of bins for float discretization.
+    verbose (bool): If True, logging intermediate information."""
+
     def __init__(self, threshhold=0.5, bin_count=100, verbose=False):
         """
         This class performs feature selection based on Normalized Mutual Information (NMI).
@@ -100,6 +111,16 @@ class NMIFeatureSelector(BaseEstimator, SelectorMixin):
         return clean_df
 
     def fit(self, X: pd.DataFrame, y: pd.Series = None):
+        """
+Fits the feature selection model to the input data.
+
+    Args:
+        X (pd.DataFrame): The input features DataFrame.
+        y (pd.Series, optional): The target series. Defaults to None.
+
+    Returns:
+        None: The fitted instance of the class.
+    """
         if y is None:
             return self
 
@@ -183,6 +204,19 @@ class NMIFeatureSelector(BaseEstimator, SelectorMixin):
         return self
 
     def _get_support_mask(self):
+        """
+Returns a boolean mask indicating selected features.
+
+    The mask is created by checking if each feature from the initial set
+    is present in the list of selected features.
+
+    Args:
+        self: The instance of the class.
+
+    Returns:
+        np.ndarray: A NumPy array representing the support mask, where True 
+            indicates a selected feature and False indicates it is not.
+    """
         mask = [
             True if e in self.features_selected else False
             for i, e in enumerate(self.initial_features)

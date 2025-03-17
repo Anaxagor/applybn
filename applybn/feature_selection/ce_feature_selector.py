@@ -6,6 +6,12 @@ from typing import Union, Tuple
 
 
 class CausalFeatureSelector(BaseEstimator, SelectorMixin):
+    """
+Causal Feature Selector.
+
+This class selects features based on their causal influence on the target variable, 
+using information theory and discretization techniques. It aims to identify features 
+that have a non-zero causal effect while controlling for other variables."""
     def __init__(self, n_bins: Union[int, str] = "auto"):
         """
         Initialize the causal feature selector.

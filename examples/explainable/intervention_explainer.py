@@ -11,6 +11,16 @@ from applybn.explainable.causal_analysis import InterventionCausalExplainer
 
 # Example data loading function (replace with actual data)
 def load_data():
+    """
+Loads the breast cancer dataset and splits it into training and testing sets.
+
+    Args:
+        None
+
+    Returns:
+        tuple: A tuple containing the training data (X_train, y_train) and 
+               testing data (X_test, y_test).
+    """
     from sklearn.datasets import load_breast_cancer
     from sklearn.model_selection import train_test_split
 

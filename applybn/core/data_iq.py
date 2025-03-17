@@ -6,6 +6,27 @@ import torch
 
 
 class DataIQSKLearn:
+    """
+This class computes various data quality metrics based on model predictions.
+
+Attributes:
+    X: The input data.
+    y: The true labels.
+    _sparse_labels: Boolean indicating if labels are one-hot encoded.
+    _gold_labels_probabilities: Gold label predicted probabilities.
+    _true_probabilities: Actual predicted probabilities of the predicted label.
+
+Methods:
+    __init__: Initializes the DataIQSKLearn class with training data and labels.
+    on_epoch_end: Computes gold label and true label probabilities over all samples in the dataset after each epoch.
+    gold_labels_probabilities: Returns gold label predicted probabilities.
+    true_probabilities: Returns actual predicted probabilities of the predicted label.
+    confidence: Returns average predictive confidence across epochs.
+    aleatoric: Returns aleatric uncertainty of true label probability across epochs.
+    variability: Returns epistemic variability of true label probability across epochs.
+    correctness: Returns proportion of times a sample is predicted correctly across epochs.
+    entropy: Returns predictive entropy of true label probability across epochs.
+    mi: Returns mutual information of true label probability across epochs."""
     def __init__(self, X, y, sparse_labels: bool = False, model_type: str = "sklearn"):
         """
         The function takes in the training data and the labels, and stores them in the class variables X

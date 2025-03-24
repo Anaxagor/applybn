@@ -2,9 +2,8 @@ from rich.console import Console
 from rich.traceback import install
 
 # Initialize the console for rich
-# console = Console()
-# install(console=console)
-
+console = Console(force_terminal=True, soft_wrap=True)
+install(console=console, width=500)
 
 class LibraryError(Exception):
     """
@@ -24,8 +23,6 @@ class LibraryError(Exception):
         if message is None:
             message = "An error occurred in applybn."
         super().__init__(message)
-        console.print_exception()
-
 
 class InvalidInputError(LibraryError):
     """
@@ -42,10 +39,7 @@ class InvalidInputError(LibraryError):
     """
 
     def __init__(self, message=None):
-        if message is None:
-            message = "Invalid input provided."
         super().__init__(message)
-        console.print_exception()
 
 
 class OperationFailedError(LibraryError):
@@ -63,10 +57,7 @@ class OperationFailedError(LibraryError):
     """
 
     def __init__(self, message=None):
-        if message is None:
-            message = "The operation failed to complete successfully."
         super().__init__(message)
-        console.print_exception()
 
 
 class ResourceNotFoundError(LibraryError):
@@ -84,7 +75,4 @@ class ResourceNotFoundError(LibraryError):
     """
 
     def __init__(self, message=None):
-        if message is None:
-            message = "The requested resource was not found."
         super().__init__(message)
-        console.print_exception()

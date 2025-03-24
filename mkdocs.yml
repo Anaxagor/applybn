@@ -4,6 +4,10 @@ repo_url: https://github.com/Anaxagor/applyBN/
 theme:
   name: material
   locale: en
+  markdown_extensions:
+    - admonition
+    - pymdownx.details
+    - pymdownx.superfences
   features:
     - announce.dismiss
     - content.action.edit
@@ -64,8 +68,9 @@ nav:
   
   - API Reference:
       - Core:
-          - api/core/core.md
           - logger: api/core/logger.md
+          - estimators: api/core/estimators.md
+          - estimators_factory: api/core/estimators_factory.md
           # - exceptions: api/core/exceptions.md
           # - progress_bar: api/core/progress_bar.md
       - Feature extraction: api/feature_extraction.md
@@ -76,12 +81,12 @@ nav:
           - Tabular outlier detection: api/outlier_detection/tabular_outliers.md
           - Time series outlier detection: api/outlier_detection/ts_outliers.md
       - Synthetic data generation: api/synthetic_data_generation.md
-      - Pipeline creation: api/pipeline_creation.md
+      - Pipeline creation </br> <b>(Subject to remove)</b>: api/pipeline_creation.md
   - Examples:
       - Tabular Data: examples/tabular_data.md
       - Time Series Data: examples/time_series_data.md
       - Synthetic Data Generation: examples/synthetic_data_generation.md
-      - Pipeline Creation: examples/pipeline_creation.md
+      - Custom Estimators: examples/custom_estimators.md
 
   - Development and Contribution:
       - development/contributing.md

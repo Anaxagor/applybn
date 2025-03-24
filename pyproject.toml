@@ -17,7 +17,7 @@ imbalanced-learn = "^0.13.0"
 pgmpy = "0.1.26"
 
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 pytest = "7.4.4"
 pytest-cov = "4.1.0"
 

@@ -9,6 +9,7 @@ from bamt.preprocess.discretization import code_categories
 from scipy.stats import norm
 from applybn.core.estimators.base_estimator import BNEstimator
 class BNFeatureGenerator(BaseEstimator, TransformerMixin):
+    
     """
     Generates features based on a Bayesian Network (BN).
     """

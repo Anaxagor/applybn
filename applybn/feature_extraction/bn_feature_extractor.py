@@ -149,8 +149,6 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
 
             try:
                 node = next((n for n in self.bn.nodes if n.name == feature), None)
-                print(node)
-
                 pvals = {}
                 pvals_disc = []
 

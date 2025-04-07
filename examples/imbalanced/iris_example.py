@@ -1,11 +1,10 @@
 """Bayesian Network Oversampling Example with Iris Dataset.
 
-This module demonstrates using BNOverSampler to address class imbalance while preserving feature
+This example demonstrates using BNOverSampler to address class imbalance while preserving feature
 relationships through Bayesian network modeling. Includes artificial imbalance creation, resampling,
 and logging integration.
 
 Attributes:
-    logger_gen: Logger configuration object.
     logger: Configured logger instance.
     oversampler: Bayesian network-based resampler.
     X_res: Resampled feature matrix.
@@ -50,9 +49,8 @@ def create_imbalanced_data(X: pd.DataFrame, y: pd.DataFrame, ratios: dict) -> tu
     return imbalanced_X, imbalanced_y
 
 if __name__ == "__main__":
-    # Configure logging
-    logger_gen = Logger("bn_oversample_demo", level=logging.INFO)
-    logger = logger_gen.get_logger()
+    # Configure logging using updated Logger class
+    logger = Logger("bn_oversample_demo", level=logging.INFO)
     logger.info("Initializing BN oversampling demonstration")
 
     # Load and prepare data

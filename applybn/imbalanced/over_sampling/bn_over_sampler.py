@@ -1,7 +1,9 @@
 from imblearn.over_sampling.base import BaseOverSampler
+from bamt.preprocessors import Preprocessor
+from sklearn.preprocessing import LabelEncoder, KBinsDiscretizer
 import pandas as pd
 from sklearn.exceptions import NotFittedError
-from applybn.synthetics.bn_synthetic_generator import BNSyntheticGenerator
+from applybn.core.estimators.base_estimator import BNEstimator
 import numpy as np
 from typing import Any
 
@@ -24,7 +26,7 @@ class BNOverSampler(BaseOverSampler):
         data_generator_: Fitted Bayesian Network synthetic data generator instance.
 
     Example:
-        >>> from applybn.imbalanced.over_sampling.bn_over_sampler import BNOverSampler
+        >>> from applybn.imbalanced.over_sampling.bn__over_sampler import BNOverSampler
         >>> oversampler = BNOverSampler(class_column='target', strategy='max_class')
         >>> X_res, y_res = oversampler.fit_resample(X, y)
     """
@@ -35,7 +37,7 @@ class BNOverSampler(BaseOverSampler):
         self.class_column = class_column
         self.strategy = strategy
         self.shuffle = shuffle
-        self.data_generator_ = BNSyntheticGenerator()
+        self.data_generator_ = BNEstimator()
 
 
     def _generate_samples_for_class(self, cls: str|int, needed: int, data_columns: list, types_dict: dict) -> pd.DataFrame:
@@ -51,13 +53,13 @@ class BNOverSampler(BaseOverSampler):
         Returns:
             samples: Generated samples with proper data types.
         """
-        samples = self.data_generator_.bn.sample(
+        samples = self.data_generator_.bn_.sample(
             needed, 
             evidence={self.class_column: cls}, 
             filter_neg=False
         )[data_columns]
         if samples.shape[0] < needed:
-            additional = self.data_generator_.bn.sample(needed, evidence={self.class_column: cls}, filter_neg=False)[data_columns]
+            additional = self.data_generator_.bn_.sample(needed, evidence={self.class_column: cls}, filter_neg=False)[data_columns]
             samples = pd.concat([samples, additional.sample(needed - samples.shape[0])])
         return self._adjust_sample_types(samples, types_dict)
     
@@ -91,7 +93,7 @@ class BNOverSampler(BaseOverSampler):
             balanced_data: Balanced dataset containing original and synthetic samples.
         """
         samples = []
-        types_dict = self.data_generator_.bn.descriptor['types']
+        types_dict = self.data_generator_.bn_.descriptor['types']
         
         # Calculate needed samples for each class
         needed_samples = (target_size - class_counts).clip(lower=0)
@@ -135,10 +137,18 @@ class BNOverSampler(BaseOverSampler):
         if self.class_column is None:
             self.class_column = y.name if hasattr(y, 'name') else 'class'
         data = X_df.assign(**{self.class_column: y_series})
+        
+        # Preprocess data
+        encoder = LabelEncoder()
+        discretizer = KBinsDiscretizer(n_bins=10, encode='ordinal', strategy='quantile')
+        pp = Preprocessor([("encoder", encoder), ("discretizer", discretizer)])
+        preprocessed_data, _ = pp.apply(data)
+        # Fit Bayesian Network
+        self.data_generator_.use_mixture = True
+        fit_package = (preprocessed_data, pp.info, data)
+        self.data_generator_.fit(X = fit_package)
 
-        # Fit Bayesian Network using DataGenerator
-        self.data_generator_.fit(data)
-        if self.data_generator_.bn is None:
+        if self.data_generator_.bn_ is None:
             raise NotFittedError('Generator model must be fitted first.')
 
         # Determine target class size

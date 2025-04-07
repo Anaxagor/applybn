@@ -1,172 +1,127 @@
-import pandas as pd
+from sklearn.utils.validation import check_is_fitted
 
-from applybn.core.estimators import BNEstimator
+from anomaly_detection.displays.results_display import ResultsDisplay
+from anomaly_detection.estimators.tabular_estimator import TabularEstimator
 
-# todo: aliases??
-# from typing import Type
-from applybn.core.schema import scores
-import inspect
+from applybn.anomaly_detection.scores.mixed import ODBPScore
+from applybn.anomaly_detection.scores.model_based import ModelBasedScore
+from applybn.anomaly_detection.scores.proximity_based import LocalOutlierScore
 
+from sklearn.utils._param_validation import StrOptions
+
+from typing import Literal
+import numpy as np
+from sklearn.exceptions import NotFittedError
+from sklearn.metrics import f1_score
+from applybn.core.estimators.estimator_factory import EstimatorPipelineFactory
+from applybn.anomaly_detection.anomaly_detection_pipeline import AnomalyDetectionPipeline
 
 class TabularDetector:
-    def __init__(self,
-                 estimator: BNEstimator,
-                 score: scores,
-                 target_name: str | None = "anomaly"):
-        self.estimator = estimator
-        self.score = score
-        self.scores_ = None
+    """
+    A tabular detector for anomaly detection.
+
+    Examples:
+        >>>    d = TabularDetector(target_name="anomaly")
+        >>>    d.fit(X=X)
+        >>>    d.predict(X=X)
+        >>>    preds = d.predict_scores(X)
+        >>>    d.plot_result(preds)
+    """
+    _parameter_constraints = {
+        "target_name": [str],
+        "score": StrOptions({"mixed", "proximity", "model"})
+    }
+
+    _scores = {
+        "mixed": ODBPScore,
+        "proximity": LocalOutlierScore,
+        "model": ModelBasedScore
+    }
+
+    def __init__(self, target_name,
+                 score: Literal["mixed", "proximity", "model"] = "mixed",
+                 additional_score: None | str = "LOF",
+                 thresholding_strategy: None | str = "best_from_range",):
+        # todo: type hints
         self.target_name = target_name
+        self.score = score
+        self.additional_score = additional_score
+        self.thresholding = thresholding_strategy
+        self.y_ = None
 
-    def partial_fit(self, X, mode: str, y=None, **kwargs):
-        match mode:
-            case "structure":
-                self.estimator.fit(X, partial=True, **kwargs)
-            case "parameters":
-                self.estimator.bn.fit_parameters(X, **kwargs)
-                self.score.bn = self.estimator.bn
-            case "both":
-                self.estimator.fit(X, **kwargs)
-            case _:
-                raise Exception("Unknown mode!")
-
-    def fit(self, discretized_data, y, descriptor,
-            clean_data: pd.DataFrame | None = None,
-            inject=False, bn_params=None):
+    def _is_fitted(self):
         """
-        # todo: doctest format
-        Args:
-            discretized_data:
-            y: pass only if how="inject"
-            clean_data:
-            descriptor:
-            inject:
-            bn_params:
-        Returns:
+         Checks whether the detector is fitted or not by checking "pipeline_" key if __dict__.
+         This has to be done because check_is_fitted(self) does not imply correct and goes into recursion because of
+         delegating strategy in getattr method.
+         """
+        return True if "pipeline_" in self.__dict__ else False
 
-        """
-        if bn_params is None:
-            bn_params = {}
-        if inject and y is None:
-            # todo
-            raise Exception("no y")
+    def __getattr__(self, attr: str):
+        """If attribute is not found in the pipeline, look in the last step of the pipeline."""
+        try:
+            return object.__getattribute__(self, attr)
+        except AttributeError:
+            if self._is_fitted():
+                return getattr(self.pipeline_, attr)
+            else:
+                raise NotFittedError("BN Estimator has not been fitted.")
 
-        self.estimator.fit(discretized_data, clean_data=clean_data,
-                           descriptor=descriptor, partial=True, **bn_params)
-        data_to_parameters_learning = clean_data.copy()
-        if inject:
-            self.estimator.inject_target(y=y, data=discretized_data)
-            data_to_parameters_learning = clean_data.copy()
-            data_to_parameters_learning[self.target_name] = y.to_numpy()
+    def construct_score(self, **scorer_args):
+        score_class = self._scores[self.score]
+        score_obj = score_class(**scorer_args)
+        return score_obj
 
-        if not self.target_name:
-            self.estimator.bn.fit_parameters(data_to_parameters_learning)
-            return self
+    def fit(self, X, y=None):
+        factory = EstimatorPipelineFactory(task_type="classification")
+        factory.estimator_ = TabularEstimator()
+        pipeline = factory()
+        self.y_ = X.pop(self.target_name)
 
-        if self.target_name not in discretized_data:
-            # todo
-            raise Exception("column with target name was not found.")
+        pipeline.fit(X)
 
-        substructure = self.estimator.bn.find_family(self.target_name, depth=10, height=10)
-        if len(substructure["edges"]) > 15:
-            # todo: warning
-            print("Too dense substructure related to target! ", len(substructure["edges"]))
-
-        self.estimator.bn.set_structure(
-            nodes=[self.estimator.bn[node] for node in substructure["nodes"]],
-            edges=substructure["edges"],
-            info={"types":
-                      {name: value for name, value in descriptor["types"].items() if name in substructure["nodes"]},
-                  "signs": {name: value for name, value in descriptor["signs"].items() if
-                            name in substructure["nodes"]}}
-        )
-
-        self.estimator.bn.fit_parameters(data_to_parameters_learning[substructure["nodes"]])
+        self.pipeline_ = AnomalyDetectionPipeline.from_core_pipeline(pipeline)
         return self
 
-    def predict(self,
-                X,
-                threshold=0.7,
-                return_scores=True,
-                inverse_threshold=False):
-        # todo: fit validation
+    def decision_function(self, X):
+        score_obj = self.construct_score(
+            bn=self.pipeline_.bn_,
+            model_estimation_method="original_modified",
+            proximity_estimation_method=self.additional_score,
 
-        scores_values = self.score.score(X)
-        scores_values = pd.Series(scores_values.flatten(), index=X.index)
+            model_scorer_args=dict(encoding=self.pipeline_.encoding)
 
-        if return_scores:
-            return scores_values
+        )
+        self.pipeline_.set_params(bn_estimator__scorer=score_obj)
+        scores = self.pipeline_.score(X)
+        return scores
 
-        # self.scores = scores_values
-        # classes = scores_values.copy()
-        #
-        # if isinstance(threshold, str):
-        #     match threshold:
-        #         case "mean_score":
-        #             threshold = scores_values.mean()
-        #             print(f"Threshold: {threshold}")
-        #             # todo: INVERSE
-        #             classes[scores_values >= threshold] = 1
-        #             classes[scores_values < threshold] = 0
-        #         case _:
-        #             raise Exception()
-        # else:
-        #     classes[scores_values >= threshold] = 0
-        #     classes[scores_values < threshold] = 1
+    @staticmethod
+    def threshold_search_supervised(y, y_pred):
+        thresholds = np.linspace(1, y_pred.max(), 100)
+        eval_scores = []
 
-        # return classes
+        for t in thresholds:
+            outlier_scores_thresholded = np.where(y_pred < t, 0, 1)
+            eval_scores.append(f1_score(y, outlier_scores_thresholded))
 
-    def get_params(self, deep=True):
-        """
-        Get parameters for this estimator.
+        return thresholds[np.argmax(eval_scores)]
 
-        Parameters
-        ----------
-        deep : bool, default=True
-            If True, will return the parameters for this estimator and
-            contained subobjects that are estimators.
+    def predict_scores(self, X):
+        check_is_fitted(self)
+        return self.decision_function(X)
 
-        Returns
-        -------
-        params : dict
-            Parameter names mapped to their values.
-        """
-        out = dict()
-        for key in self._get_param_names():
-            value = getattr(self, key)
-            if deep and hasattr(value, "get_params") and not isinstance(value, type):
-                deep_items = value.get_params().items()
-                out.update((key + "__" + k, val) for k, val in deep_items)
-            out[key] = value
-        return out
+    def predict(self, X):
+        check_is_fitted(self)
+        D = self.decision_function(X)
+        if self.y_ is not None:
+            best_threshold = self.threshold_search_supervised(self.y_, D)
+        else:
+            # todo:
+            pass
 
-    @classmethod
-    def _get_param_names(cls):
-        """Get parameter names for the estimator"""
-        # fetch the constructor or the original constructor before
-        # deprecation wrapping if any
-        init = getattr(cls.__init__, "deprecated_original", cls.__init__)
-        if init is object.__init__:
-            # No explicit constructor to introspect
-            return []
+        return np.where(D > best_threshold, 1, 0)
 
-        # introspect the constructor arguments to find the model parameters
-        # to represent
-        init_signature = inspect.signature(init)
-        # Consider the constructor parameters excluding 'self'
-        parameters = [
-            p
-            for p in init_signature.parameters.values()
-            if p.name != "self" and p.kind != p.VAR_KEYWORD
-        ]
-        for p in parameters:
-            if p.kind == p.VAR_POSITIONAL:
-                raise RuntimeError(
-                    "scikit-learn estimators should always "
-                    "specify their parameters in the signature"
-                    " of their __init__ (no varargs)."
-                    " %s with constructor %s doesn't "
-                    " follow this convention." % (cls, init_signature)
-                )
-        # Extract and sort argument names excluding 'self'
-        return sorted([p.name for p in parameters])
+    def plot_result(self, predicted):
+        result_display = ResultsDisplay(predicted, self.y_)
+        result_display.show()

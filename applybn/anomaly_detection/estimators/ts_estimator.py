@@ -10,4 +10,4 @@ class StaticEstimator(estimator_with_default_interface):
 
 my_estimator = StaticEstimator()
 
-print(*inspect.getmembers(my_estimator), sep="\n")
+print(*inspect.getmembers(my_estimator), sep="\n") # check that all methods are in

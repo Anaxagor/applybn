@@ -55,11 +55,8 @@ class EstimatorPipelineFactory:
         Returns:
             CorePipeline: The constructed pipeline.
         """
-        self._adjust_interface()
         if preprocessor is None:
-            encoder = pp.LabelEncoder()
-            discretizer = pp.KBinsDiscretizer(n_bins=5, encode='ordinal', strategy='uniform')
-            preprocessor = Preprocessor([('encoder', encoder), ('discretizer', discretizer)])
+            preprocessor = self.default_preprocessor
 
         # todo: args and kwargs unpacking
         self.estimator.set_params(**params)
@@ -67,7 +64,7 @@ class EstimatorPipelineFactory:
         wrapped_preprocessor = self.convert_bamt_preprocessor(preprocessor)
 
         pipeline = CorePipeline([("preprocessor", wrapped_preprocessor),
-                                 ("bn_estimator", self.estimator_)])
+                                 ("bn_estimator", self.estimator)])
         return pipeline
 
     def _adjust_interface(self):
@@ -91,3 +88,10 @@ class EstimatorPipelineFactory:
         if not self.estimator_:
             self._adjust_interface()
         return self.estimator_
+
+    @property
+    def default_preprocessor(self):
+        encoder = pp.LabelEncoder()
+        discretizer = pp.KBinsDiscretizer(n_bins=5, encode='ordinal', strategy='uniform')
+        preprocessor = Preprocessor([('encoder', encoder), ('discretizer', discretizer)])
+        return preprocessor

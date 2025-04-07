@@ -1,6 +1,6 @@
 from typing import TypedDict, Sequence, Tuple, List, Union, Callable, TypeVar, Literal
 from applybn.anomaly_detection.scores.score import Score
-
+from bamt.networks import BaseNetwork
 
 # bamt inner parameters
 class StructureLearnerParams(TypedDict, total=False):
@@ -29,3 +29,4 @@ class BNEstimatorParams(TypedDict, total=False):
 
 
 scores = TypeVar("scores", bound=Score)
+bamt_network = TypeVar("bamt_network", bound=BaseNetwork)

@@ -1,137 +1,154 @@
 import pandas as pd
 
+from anomaly_detection.scores.proximity_based import IsolationForestScore
+from applybn.anomaly_detection.scores.proximity_based import LocalOutlierScore
+
+import warnings
 from applybn.anomaly_detection.scores.score import Score
-# from applybn.anomaly_detection.scores.proximity_based import LocalOutlierScore
+from applybn.core.schema import bamt_network
 
 import numpy as np
-from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
-import seaborn as sns
+
 from matplotlib.legend_handler import HandlerPathCollection
 from sklearn.decomposition import PCA
-
+from scipy.stats import norm
+from typing import Literal
+from applybn.anomaly_detection.scores.model_based import BNBasedScore
 
 class ODBPScore(Score):
-    def __init__(self, score, encoding, proximity_steps=10):
+    _model_estimation_method = {
+        "original_modified": BNBasedScore,
+        "iqr": None,
+        "cond_ratio": None
+    }
+
+    _proximity_estimation_method = {
+        "LOF": LocalOutlierScore,
+        "IF": IsolationForestScore
+    }
+
+    def __init__(self,
+                 bn: bamt_network,
+                 iqr_sensivity=1.5, agg_funcs=None, verbose=1,
+                 model_estimation_method: Literal["original_modified", "iqr", "cond_ratio"] = "iqr",
+                 proximity_estimation_method: Literal["LOF", "IF"] = "LOF",
+                 model_scorer_args=None, additional_scorer_args=None):
         super().__init__()
-        # self.estimator = BNEstimator
-        # todo: remove bn from here
-        self.bn = None
-        self.score_proximity = score
-        self.encoding = encoding
-        self.proximity_steps = proximity_steps
+        if agg_funcs is None:
+            agg_funcs = dict(proximity=np.sum, model=np.sum)
+
+        if additional_scorer_args is None:
+            additional_scorer_args = dict(proximity_steps=5)
+
+        if model_scorer_args is None:
+            model_scorer_args = dict()
+
+        self.model_scorer = self._model_estimation_method[model_estimation_method](bn=bn, **model_scorer_args)
+        self.proximity_scorer = self._proximity_estimation_method[proximity_estimation_method](**additional_scorer_args)
+
+        self.agg_funcs = agg_funcs
 
         self.proximity_impact = 0
         self.model_impact = 0
 
-    def local_model_score_linear(self, X: pd.DataFrame, node_name):
-        node = self.bn[node_name]
-        parents = node.cont_parents + node.disc_parents
-        subspace = X[[node_name] + parents]
-        means = []
-        dist = self.bn.distributions[node_name]
 
-        # if node.disc_parents:
-        #     grouped = subspace.groupby(node.disc_parents)
-        # else:
-        #     grouped = subspace
+        self.iqr_sensivity = iqr_sensivity
+        self.verbose = verbose
 
-        for indx, row in subspace.iterrows():
-            coefs = dist["regressor_obj"].coef_
-            mean_estimated = dist["regressor_obj"].intercept_ + coefs.reshape(1, -1) @ row[1:].to_numpy().reshape(-1, 1)
-            true_value = row[node_name]
-            # Z-score
-            means.append((true_value - mean_estimated[0][0]) / dist["variance"])
+    def __repr__(self):
+        return f"ODBP Score (proximity={self.proximity_scorer})"
 
-            # MAE
-            # means.append(abs(true_value - mean_estimated[0][0]))
-
-        # scaler = StandardScaler()
-        # mean_scaled = scaler.fit_transform(np.asarray(means).reshape(-1, 1))
-        return np.asarray(means).reshape(-1, 1)
-        # return mean_scaled
-
-        # for parents_combination, group in grouped:
-        #     diff_local = []
-        #     mean_node = dist[parents_combination].regressor_obj.coef_
-        #     subspace = [mean_node]
-        #     subspace.extend(
-        #         [self.estimator.bn.get_dist(parent_name) for parent_name in group.columns]
-        #     )
-        #     subspace = np.array(subspace)
-        #     # todo: matrix form needed
-        #     for indx, row in group.iterrows():
-        #         diff_local.append(mean_node + subspace @ row.to_numpy())
-        #
-        #     diff.append(diff_local)
-
-    def local_model_score(self, X: pd.DataFrame, node_name):
+    def local_model_score_proba(self, X: pd.DataFrame, node_name):
         node = self.bn[node_name]
         diff = []
-        dist = self.bn.distributions[node_name]
         parents = node.cont_parents + node.disc_parents
 
         for _, row in X.iterrows():
-            # todo: disgusting
             pvalues = row[parents].to_dict()
-
-            pvals_bamt_style = [pvalues[parent] for parent in parents]
             cond_dist = self.bn.get_dist(node_name, pvals=pvalues)
 
-            # todo: super disgusting
             if isinstance(cond_dist, tuple):
-                if len(cond_dist) == 2:
-                    cond_mean, var = cond_dist
-                else:
-                    cond_mean = node.predict(dist, pvals=pvals_bamt_style)
-                    # todo: may be use singular vals of cov matrix as norm constants?
-                    diff.append(row[node_name] - cond_mean)
-                    continue
+                cond_mean, var = cond_dist
+                dist = norm(loc=cond_mean, scale=var)
+                diff.append(1 - dist.cdf(row[node_name]))
             else:
-                dispvals = []
-                for pval in pvals_bamt_style:
-                    if isinstance(pval, str):
-                        dispvals.append(pval)
+                diff.append(1 - cond_dist[self.encoding[node_name][row[node_name]]])
 
-                if "vals" in dist.keys():
-                    classes = dist["vals"]
-                elif "classes" in dist.keys():
-                    classes = dist["classes"]
-                elif "hybcprob" in dist.keys():
-                    if "classes" in dist["hybcprob"][str(dispvals)]:
-                        classes = dist["hybcprob"][str(dispvals)]["classes"]
-                        if pd.isna(classes[0]):
-                            # if subspace of a combination is empty
-                            diff.append(np.nan)
-                            continue
-                    else:
-                        raise Exception()
-                else:
-                    raise Exception()
-
-                classes_coded = np.asarray([self.encoding[node_name][class_name] for class_name in classes])
-                cond_mean = classes_coded @ np.asarray(cond_dist).T
-            if isinstance(row[node_name], str):
-                # MAE
-                # diff.append(abs(cond_mean - self.encoding[node_name][row[node_name]]))
-                diff.append(
-                    self.encoding[node_name][row[node_name]] - cond_mean
-                )
-            else:
-                # MAE
-                # diff.append(abs(cond_mean - row[node_name]))
-
-                # Z score
-                diff.append(
-                    (row[node_name] - cond_mean) / var
-                )
-
-        # scaler = StandardScaler()
-        # scaler = MinMaxScaler()
-        # diff_scaled = scaler.fit_transform(np.asarray(diff).reshape(-1, 1))
-
-        # return diff_scaled
         return np.asarray(diff).reshape(-1, 1)
+
+    @staticmethod
+    def score_iqr(upper, lower, y, max_distance, min_distance):
+        if lower < y <= upper:
+            return 0
+
+        closest_value = min([upper, lower], key=lambda x: abs(x - y))
+
+        current_distance = abs(closest_value - y)
+
+        if closest_value == upper:
+            ref_distance = max_distance
+        elif closest_value == lower:
+            ref_distance = min_distance
+        else:
+            # todo
+            raise Exception
+        result = min(1, current_distance / abs(ref_distance))
+
+        return result
+
+    def score_proba_ratio(self, sample: pd.Series, X_value, cond_dist):
+        marginal_prob = sample.value_counts(normalize=True)[X_value]
+        index = self.encoding[sample.name][X_value]
+        cond_prob = cond_dist[index]
+
+        if not np.isfinite(marginal_prob / cond_prob):
+            # it is impossible to estimate if cond dataframe doesn't contain X_value
+            return np.nan
+        # the greater, the more abnormal
+        return min(1, marginal_prob / cond_prob)
+
+    def local_model_score_iqr(self, X: pd.DataFrame, node_name: str):
+        node = self.bn[node_name]
+        diff = []
+        parents = node.cont_parents + node.disc_parents
+        sources = []
+        for _, row in X.iterrows():
+            pvalues = row[parents].to_dict()
+            cond_dist = self.bn.get_dist(node_name, pvals=pvalues)
+            X_value = row[node_name]
+            if isinstance(cond_dist, tuple):
+                cond_mean, var = cond_dist
+                if var == 0:
+                    warnings.warn("Zero variance detected!")
+                    continue
+
+                dist = norm(loc=cond_mean, scale=var)
+
+                q25 = dist.ppf(.25)
+                q75 = dist.ppf(.75)
+                iqr = q75 - q25
+
+                lower_bound = q25 - iqr * self.iqr_sensivity
+                upper_bound = q75 + iqr * self.iqr_sensivity
+
+                diff.append(self.score_iqr(upper_bound, lower_bound, X_value,
+                                           max_distance=1 * X[node_name].max(),
+                                           min_distance=1 * X[node_name].min()))
+                sources.append(0)
+            else:
+                diff.append(self.score_proba_ratio(X[node_name], X_value, cond_dist))
+                sources.append(1)
+        sources = np.asarray(sources)
+
+        if np.all(sources == 0):
+            result = diff
+        elif np.all(sources == 1):
+            result = diff
+        else:
+            raise Exception()
+
+        return {node_name: result}
 
     @staticmethod
     def plot_lof(X, negative_factors):
@@ -145,7 +162,6 @@ class ODBPScore(Score):
         if X.shape[1] > 2:
             pca = PCA(n_components=3)
             X = pca.fit_transform(X)
-            print(pca.explained_variance_ratio_)
 
         plt.scatter(X[:, 0], X[:, 1], color="k", s=3.0, label="Data points")
         # plot circles with radius proportional to the outlier scores
@@ -165,54 +181,20 @@ class ODBPScore(Score):
         plt.title("Local Outlier Factor (LOF)")
         plt.show()
 
-    def local_proximity_score(self, X):
-        t = np.random.randint(X.shape[1] // 2, X.shape[1] - 1)
-        columns = np.random.choice(X.columns, t, replace=False)
-
-        subset = X[columns]
-
-        subset_cont = subset.select_dtypes(include=["number"])
-
-        # The higher, the more abnormal
-        outlier_factors = self.score_proximity.score(subset_cont)
-        # plt.hist(outlier_factors)
-        # plt.show()
-        # self.plot_lof(subset_cont, outlier_factors)
-
-        # scaler = StandardScaler()
-        # scaler = MinMaxScaler(feature_range=(0, 10))
-        # outlier_factors_scaled = scaler.fit_transform(outlier_factors.reshape(-1, 1))
-        # self.plot_lof(subset_cont, outlier_factors_scaled)
-        return np.asarray(outlier_factors).reshape(-1, 1)
-        # return outlier_factors_scaled
-
     def score(self, X):
-        child_nodes = []
-        for column in X.columns:
-            if self.bn[column].disc_parents + self.bn[column].cont_parents:
-                child_nodes.append(column)
-
-        proximity_factors = []
-        model_factors = []
-
-        for _ in range(self.proximity_steps):
-            proximity_factors.append(self.local_proximity_score(X))
-
-        for child_node in child_nodes:
-            model_factors.append(self.local_model_score(X, child_node))
-
-        proximity_factors = np.hstack(proximity_factors)
-        model_factors = np.hstack(model_factors)
+        model_factors = self.model_scorer.score(X)
+        proximity_factors = self.proximity_scorer.score(X)
 
         # make zero impact from factors less than 0 since they correspond to inliners
         proximity_factors = np.where(proximity_factors <= 0, 0, proximity_factors)
 
         # higher the more normal, only
-        proximity_outliers_factors = proximity_factors.sum(axis=1)
+        proximity_outliers_factors = self.agg_funcs["proximity"](proximity_factors, axis=1)
 
         # any sign can be here, so we take absolute values since distortion from mean is treated as an anomaly
-        model_outliers_factors = np.abs(model_factors).sum(axis=1)
+        # model_outliers_factors = np.abs(model_factors).sum(axis=1)
 
+        model_outliers_factors = self.agg_funcs["model"](np.abs(model_factors), axis=1)
         outlier_factors = proximity_outliers_factors + model_outliers_factors
 
         model_impact = model_outliers_factors / outlier_factors

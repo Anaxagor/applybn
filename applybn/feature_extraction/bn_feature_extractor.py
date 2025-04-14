@@ -7,7 +7,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 import numpy as np
 from bamt.preprocess.discretization import code_categories
 from scipy.stats import norm
-from applybn.core.estimators.base_estimator import BNEstimator
+from applybn.applybn.core.estimators.base_estimator import BNEstimator
 class BNFeatureGenerator(BaseEstimator, TransformerMixin):
     """
     Generates features based on a Bayesian Network (BN).
@@ -149,7 +149,6 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
 
             try:
                 node = next((n for n in self.bn.nodes if n.name == feature), None)
-                #print(node)
 
                 pvals = {}
                 pvals_disc = []
@@ -222,7 +221,6 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
         obs_value = row[feature]
         try:
             dist = self.bn.get_dist(str(feature), pvals=pvals).get()
-            print(feature,'dist',dist)
             match dist:
 
                 case tuple() if len(dist) == 2:

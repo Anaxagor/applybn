@@ -107,7 +107,7 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
             logging.error(AttributeError,
                           "Parameter learning wasn't done. Call fit method"
                           )
-            return pd.DataFrame()  # Return an empty DataFrame to avoid further errors
+            return X
 
         results = []
         # Process each feature (column) in the row using the BN

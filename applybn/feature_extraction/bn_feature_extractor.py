@@ -7,9 +7,8 @@ from sklearn.base import BaseEstimator, TransformerMixin
 import numpy as np
 from bamt.preprocess.discretization import code_categories
 from scipy.stats import norm
-from applybn.core.estimators.base_estimator import BNEstimator
+from applybn.applybn.core.estimators.base_estimator import BNEstimator
 class BNFeatureGenerator(BaseEstimator, TransformerMixin):
-    
     """
     Generates features based on a Bayesian Network (BN).
     """
@@ -18,7 +17,7 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
         self.bn = None
         self.target_name = ''
 
-    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None):
+    def fit(self, X: pd.DataFrame, y: pd.Series | None = None):
         """
         Fits the BNFeatureGenerator to the data.
 
@@ -31,8 +30,8 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
         6.  Fitting the parameters of the Bayesian Network.
 
         Args:
-            X (pd.DataFrame): The input data.
-            y (Optional[pd.Series]): The target variable. If provided, it will be added to the input data and
+            X: The input data.
+            y: The target variable. If provided, it will be added to the input data and
                 treated as a node in the Bayesian Network.
 
         Returns:
@@ -82,10 +81,10 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
         Processes the target variable by making predictions using the Bayesian Network.
 
         Args:
-            X (pd.DataFrame): The input data.
+            X: The input data.
 
         Returns:
-            pd.Series: Predictions for the target variable.
+            Predictions for the target variable.
         """
         if not self.target_name:
             return None
@@ -93,7 +92,7 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
         predictions = self.bn.predict(test=X, parall_count=-1, progress_bar=False)
         return pd.Series(predictions[self.target_name])
 
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+    def transform(self, X: pd.DataFrame, fill_na: bool = True) -> pd.DataFrame:
         """
         Transforms the input DataFrame `X` into a new DataFrame where each column
         represents the calculated feature based on the fitted BN.
@@ -102,7 +101,7 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
             X (pd.DataFrame) is the input DataFrame to transform.
 
         Returns:
-            pd.DataFrame is a new DataFrame with lambda-features.
+            A new DataFrame with lambda-features.
         """
         if not self.bn:
             logging.error(AttributeError,
@@ -113,7 +112,7 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
         results = []
         # Process each feature (column) in the row using the BN
         for _, row in X.iterrows():
-            row_probs = [self.process_feature(feat, row, X) for feat in list(map(str, self.bn.nodes))]
+            row_probs = [self.process_feature(feat, row, X, fill_na) for feat in list(map(str, self.bn.nodes))]
             results.append(row_probs)
 
         result = pd.DataFrame(results, columns=['lambda_' + c for c in list(map(str, self.bn.nodes))])
@@ -133,22 +132,25 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
 
         return black_list
 
-    def process_feature(self, feature: str, row: pd.Series, X):
+    def process_feature(self, feature: str, row: pd.Series, X: pd.DataFrame, fill_na: bool = True):
 
         """
         Processes a single feature (node) in the Bayesian network for a given row of data.
 
         Args:
-            feature (str): The name of the feature (node) being processed.
-            row (pd.Series): A row from X.
+            feature: The name of the feature (node) being processed.
+            row: A row from X.
+            X: DataFrame that we transform.
 
         Returns:
-            float: The probability or observed value depending on the node type.
+            The probability or observed value depending on the node type.
         """
         if str(feature) != self.target_name:
 
             try:
                 node = next((n for n in self.bn.nodes if n.name == feature), None)
+                #print(node)
+
                 pvals = {}
                 pvals_disc = []
 
@@ -163,127 +165,75 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
                     pvals_disc.append(norm_val)
 
                 # Process discrete nodes
-                if node.type == 'Discrete':
+                if node.type == 'Discrete' or 'logit' in node.type:
                     vals = X[node.name].value_counts(normalize=True).sort_index()
                     vals = [str(i) for i in vals.index.to_list()]
-                    return self._process_discrete_node(feature, row, pvals, vals)
+                    return self._process_discrete_node(feature, row, pvals, vals, fill_na)
 
                 # Process non-discrete nodes
                 else:
                     vals = X[node.name].value_counts(normalize=True).sort_index()
                     vals = [(i) for i in vals.index.to_list()]
-                    return self._process_non_discrete_node(feature, row, pvals, vals, pvals_disc)
+                    return self._process_non_discrete_node(feature, row, pvals, vals, fill_na)
 
             except Exception as e:
                 logging.error(f"Error processing node {feature}: {e}")
                 return 0.0001
 
-    def _process_discrete_node(self, feature, row, pvals, vals):
+    def _process_discrete_node(self, feature, row, pvals, vals, fill_na):
         """
         Processes a discrete node.
 
         Args:
             node - the discrete node object.
-            feature (str) - the name of the feature (node).
-            row (pd.Series) - a row of data from the DataFrame.
-            pvals (list) - list of parent values.
-            vals - possible values of the 'feature'.
+            feature (str): the name of the feature (node).
+            row (pd.Series): a row of data from the DataFrame.
+            pvals (list): list of parent values.
+            vals: possible values of the 'feature'.
 
         Returns:
-            float - value of a new feature.
+            float: value of a new feature.
         """
 
-        obs_value = str((row[feature]))
+        obs_value = row[feature]
         try:
-            dist = self.bn.get_dist(str(feature), pvals=pvals)
-
+            dist = self.bn.get_dist((feature), pvals=pvals).get()
+            idx = dist[1].index(obs_value)
+            return dist[0][idx]
         except:
-            return 0.0001
+            if fill_na:
+                return pd.Series(vals).value_counts(normalize=True).get(row[feature], 0.0)
+            else:
+                return np.nan
 
-        try:
-            # Try to find the index of the observed value in the node's values
-            idx = dist["vals"].index(obs_value)
-            if not dist.get("cprob"):
-                return 0.0001
-            return dist["cprob"][idx]
-        except:
-            idx = vals.index((obs_value))
-            return dist[idx]
-
-    def _process_non_discrete_node(self, feature, row, pvals, vals, pvals_disc):
+    def _process_non_discrete_node(self, feature, row, pvals, vals, fill_na):
         """
         Processes a non-discrete node.
 
         Args:
-            feature (str) - the name of the feature (node).
-            row (pd.Series) - a row of data from the DataFrame.
-            pvals (list) - list of parent values.
-            vals - possible values of the 'feature'.
+            feature (str): the name of the feature (node).
+            row (pd.Series): a row of data from the DataFrame.
+            pvals (list): list of parent values.
+            vals: possible values of the 'feature'.
 
         Returns:
-            float - value of a new feature.
+            float: value of a new feature.
         """
-        obs_value = (row[feature])
+        obs_value = row[feature]
         try:
-            dist = self.bn.get_dist(str(feature), pvals=pvals)
-        except:
-            return 0.0001
+            dist = self.bn.get_dist(str(feature), pvals=pvals).get()
+            print(feature,'dist',dist)
+            match dist:
 
-        match dist:
-            case dict() if len(dist) > 2:
-                try:
-                    mean, variance = dist['mean'], dist['variance']
-                    sigma = np.sqrt(variance)
-                    if sigma <= 0 or np.isnan(sigma):
-                        return 0.0001
-                    prob = norm.cdf(obs_value, loc=mean, scale=sigma)
-                    if np.isnan(prob):
-                        return 0.0001
-                    return prob
-                except:
-                    logging.warning("dist not found for node %s:", feature)
-                    return 0.0001
-
-            case dict():
-                try:
-                    idx = dist["vals"].index(obs_value)
-                    return dist["cprob"][idx]
-                except:
-                    idx = vals.index((obs_value))
-                    return dist[idx]
-
-            case tuple() if len(dist) == 2: # to be deleted
-                try:
+                case tuple() if len(dist) == 2:
                     mean, variance = dist
                     sigma = variance
                     prob = norm.cdf(obs_value, loc=mean, scale=sigma)
-                    if np.isnan(prob):
-                        return 0.0001
                     return prob
-                except:
-                    logging.warning("dist not found for node %s:", feature)
-                    return 0.0001
+        except:
 
-            case tuple():
-                logging.warning("unknown dist for node %s: %s", feature, dist)
-                return 0.0001
-
-            case np.ndarray(): # to be deleted
-                try:
-                    if "classes" in self.bn.distributions[feature]["hybcprob"][str(pvals_disc)]:
-                        classes = self.bn.distributions[feature]["hybcprob"][str(pvals_disc)]["classes"]
-                        if obs_value in classes:
-                            idx = classes.index(obs_value)
-                            prob = dist[idx]
-                            return prob
-                        else:
-                            return 0.0001
-                except KeyError:
-                    logging.warning("dist not found for node %s:", feature)
-                    return 0.0001
-
-            case _:
-                logging.warning("dist not found for node %s:", feature)
-                return 0.0001
-
-        return 0.0001
+            logging.warning("dist not found for node %s:", feature)
+            if fill_na:
+                return  (pd.Series(vals) <= obs_value).mean() if isinstance(vals, list) else (vals <= obs_value).mean()
+            else:
+                return np.nan

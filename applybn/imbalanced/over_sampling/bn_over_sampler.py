@@ -26,7 +26,7 @@ class BNOverSampler(BaseOverSampler):
         data_generator_: Fitted Bayesian Network synthetic data generator instance.
 
     Example:
-        >>> from applybn.imbalanced.over_sampling.bn__over_sampler import BNOverSampler
+        >>> from applybn.imbalanced.over_sampling.bn_over_sampler import BNOverSampler
         >>> oversampler = BNOverSampler(class_column='target', strategy='max_class')
         >>> X_res, y_res = oversampler.fit_resample(X, y)
     """
@@ -53,13 +53,13 @@ class BNOverSampler(BaseOverSampler):
         Returns:
             samples: Generated samples with proper data types.
         """
-        samples = self.data_generator_.bn_.sample(
+        samples = self.data_generator_.sample(
             needed, 
             evidence={self.class_column: cls}, 
             filter_neg=False
         )[data_columns]
         if samples.shape[0] < needed:
-            additional = self.data_generator_.bn_.sample(needed, evidence={self.class_column: cls}, filter_neg=False)[data_columns]
+            additional = self.data_generator_.sample(needed, evidence={self.class_column: cls}, filter_neg=False)[data_columns]
             samples = pd.concat([samples, additional.sample(needed - samples.shape[0])])
         return self._adjust_sample_types(samples, types_dict)
     
@@ -111,7 +111,7 @@ class BNOverSampler(BaseOverSampler):
         X: pd.DataFrame | np.ndarray,
         y: pd.Series | np.ndarray,
         **params: Any
-    ) -> tuple[pd.DataFrame, pd.Series]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Resample the dataset using Bayesian Network synthetic generation.
         Args:
             X: Feature matrix.
@@ -161,7 +161,7 @@ class BNOverSampler(BaseOverSampler):
         if self.shuffle:
             balanced_data = balanced_data.sample(frac=1).reset_index(drop=True)
         # Split back into features and target
-        X_res = balanced_data.drop(columns=[self.class_column])
-        y_res = balanced_data[self.class_column]
+        X_res = balanced_data.drop(columns=[self.class_column]).to_numpy()
+        y_res = balanced_data[self.class_column].to_numpy()
 
         return X_res, y_res

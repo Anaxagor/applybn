@@ -78,7 +78,7 @@ if __name__ == "__main__":
 
     # Perform resampling
     try:
-        X_res, y_res = oversampler._fit_resample(imbalanced_X, imbalanced_y)
+        X_res, y_res = oversampler.fit_resample(imbalanced_X, imbalanced_y)
         logger.info("Resampling completed successfully")
     except Exception as e:
         logger.error("Resampling failed: %s", str(e))

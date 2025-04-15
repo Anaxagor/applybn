@@ -1,4 +1,6 @@
-from applybn.anomaly_detection.static_anomaly_detector.tabular_detector import TabularDetector
+from applybn.anomaly_detection.static_anomaly_detector.tabular_detector import (
+    TabularDetector,
+)
 from applybn.core.estimators import BNEstimator
 from applybn.anomaly_detection.scores.proximity_based import LocalOutlierScore
 from applybn.anomaly_detection.scores.mixed import ODBPScore
@@ -12,13 +14,14 @@ from sklearn.model_selection import StratifiedKFold, StratifiedShuffleSplit
 import seaborn as sns
 from sklearn.metrics import f1_score
 
-df = pd.read_csv("data/tabular/bank_data.csv", index_col=0) \
-    .sample(3000, random_state=42, ignore_index=True)
+df = pd.read_csv("../data/tabular/bank_data.csv", index_col=0).sample(
+    3000, random_state=42, ignore_index=True
+)
 
 disc_cols = df.select_dtypes(include=["object"]).columns
 cont_cols = df.select_dtypes(include=["int64"]).columns
 df[cont_cols] = df[cont_cols].astype(float)
-y = pd.DataFrame(df.pop('y'))
+y = pd.DataFrame(df.pop("y"))
 
 y_coder = pp.LabelEncoder()
 y = pd.DataFrame(y_coder.fit_transform(y))
@@ -34,15 +37,13 @@ for train_indexes, test_indexes in skf.split(df, y):
     X_train, X_test = df.iloc[train_indexes, :], df.iloc[test_indexes, :]
     y_train, y_test = y.iloc[train_indexes, :], y.iloc[test_indexes, :]
 
-    estimator = BNEstimator(has_logit=True,
-                            use_mixture=False,
-                            bn_type="hybrid")
+    estimator = BNEstimator(has_logit=True, use_mixture=False, bn_type="hybrid")
 
     encoder = pp.LabelEncoder()
-    discretizer = pp.KBinsDiscretizer(n_bins=5, encode='ordinal', strategy='uniform')
+    discretizer = pp.KBinsDiscretizer(n_bins=5, encode="ordinal", strategy="uniform")
 
     # create a preprocessor object with encoder and discretizer
-    p = Preprocessor([('encoder', encoder), ('discretizer', discretizer)])
+    p = Preprocessor([("encoder", encoder), ("discretizer", discretizer)])
 
     # discretize data for structure learning
     discretized_data, encoding = p.apply(X_train)
@@ -61,13 +62,11 @@ for train_indexes, test_indexes in skf.split(df, y):
     score_proximity = LocalOutlierScore(n_neighbors=30)
     score = ODBPScore(estimator, score_proximity, encoding=encoding, proximity_steps=5)
 
-    detector = TabularDetector(estimator,
-                               score=score,
-                               target_name=None)
+    detector = TabularDetector(estimator, score=score, target_name=None)
 
-    detector.fit(discretized_data, y=None,
-                 clean_data=X_train, descriptor=info,
-                 inject=False)
+    detector.fit(
+        discretized_data, y=None, clean_data=X_train, descriptor=info, inject=False
+    )
     # detector.estimator.bn.get_info(as_df=False)
 
     outlier_scores = detector.detect(X_test, return_scores=True)
@@ -91,6 +90,6 @@ for train_indexes, test_indexes in skf.split(df, y):
 
     plt.figure()
     ax = sns.lineplot(x=thresholds, y=eval_scores)
-    ax.set(xlabel='thresholds', ylabel='f1_score', title=f"{i}: sensitivity analysis")
+    ax.set(xlabel="thresholds", ylabel="f1_score", title=f"{i}: sensitivity analysis")
     plt.show()
     # plt.savefig(f"real_results/{desc}.png")

@@ -35,16 +35,17 @@ class BNEstimator(BaseEstimator):
         "use_mixture": [bool],
         "bn_type": [str, None],
         "partial": [Options(object, {False, "parameters", "structure"})],
-        "learning_params": [None, dict]
+        "learning_params": [None, dict],
     }
 
-    def __init__(self,
-                 has_logit: bool = False,
-                 use_mixture: bool = False,
-                 partial: False | Literal["parameters", "structure"] = False,
-                 bn_type: Literal["hybrid", "disc", "cont"] | None = None,
-                 learning_params: Unpack[ParamDict] | None = None,
-                 ):
+    def __init__(
+        self,
+        has_logit: bool = False,
+        use_mixture: bool = False,
+        partial: False | Literal["parameters", "structure"] = False,
+        bn_type: Literal["hybrid", "disc", "cont"] | None = None,
+        learning_params: Unpack[ParamDict] | None = None,
+    ):
         """
         Initializes the BNEstimator with the given parameters.
 
@@ -63,10 +64,10 @@ class BNEstimator(BaseEstimator):
 
     def _is_fitted(self):
         """
-         Checks whether the estimator is fitted or not by checking "bn_" key if __dict__.
-         This has to be done because check_is_fitted(self) does not imply correct and goes into recursion because of
-         delegating strategy in getattr method.
-         """
+        Checks whether the estimator is fitted or not by checking "bn_" key if __dict__.
+        This has to be done because check_is_fitted(self) does not imply correct and goes into recursion because of
+        delegating strategy in getattr method.
+        """
         return True if "bn_" in self.__dict__ else False
 
     def __getattr__(self, attr: str):
@@ -78,7 +79,6 @@ class BNEstimator(BaseEstimator):
                 return getattr(self.bn_, attr)
             else:
                 raise NotFittedError("BN Estimator has not been fitted.")
-
 
     @staticmethod
     def detect_bn(data: pd.DataFrame) -> str:
@@ -107,13 +107,17 @@ class BNEstimator(BaseEstimator):
         nodes_types_unique = set(node_types.values())
 
         net_types2unqiue = {
-            "hybrid": [{"cont", "disc", "disc_num"},
-                       {"cont", "disc_num"},
-                       {"cont", "disc"}],
+            "hybrid": [
+                {"cont", "disc", "disc_num"},
+                {"cont", "disc_num"},
+                {"cont", "disc"},
+            ],
             "disc": [{"disc"}, {"disc_num"}, {"disc", "disc_num"}],
             "cont": [{"cont"}],
         }
-        find_matching_key = ({frozenset(s): k for k, v in net_types2unqiue.items() for s in v}).get
+        find_matching_key = (
+            {frozenset(s): k for k, v in net_types2unqiue.items() for s in v}
+        ).get
         return find_matching_key(frozenset(nodes_types_unique))
 
     def init_bn(self, bn_type: Literal["hybrid", "disc", "cont"]):
@@ -144,9 +148,7 @@ class BNEstimator(BaseEstimator):
         return str2net[bn_type](**params)
 
     @_fit_context(prefer_skip_nested_validation=True)
-    def fit(self,
-            X,
-            y=None):
+    def fit(self, X, y=None):
         """
         Fits the Bayesian Network to the data.
 
@@ -176,7 +178,9 @@ class BNEstimator(BaseEstimator):
         match self.partial:
             case "parameters":
                 if not self.bn_.edges:
-                    raise NotFittedError("Trying to learn parameters on unfitted estimator. Call fit method first.")
+                    raise NotFittedError(
+                        "Trying to learn parameters on unfitted estimator. Call fit method first."
+                    )
                 self.bn_.fit_parameters(clean_data)
             case "structure":
                 self.bn_.add_nodes(descriptor)

@@ -1,9 +1,11 @@
 import pytest
 from applybn.feature_extraction.bn_feature_extractor import BNFeatureGenerator
 
+
 @pytest.fixture
 def known_structure():
-    return [('A', 'B'), ('B', 'C')]
+    return [("A", "B"), ("B", "C")]
+
 
 def test_initialization(known_structure):
     generator = BNFeatureGenerator()
@@ -14,4 +16,3 @@ def test_initialization(known_structure):
 
     generator_with_structure = BNFeatureGenerator(known_structure)
     assert generator_with_structure.known_structure == known_structure
-

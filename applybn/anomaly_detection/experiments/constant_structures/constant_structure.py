@@ -1,6 +1,8 @@
 import json
 
-from applybn.anomaly_detection.static_anomaly_detector.tabular_detector import TabularDetector
+from applybn.anomaly_detection.static_anomaly_detector.tabular_detector import (
+    TabularDetector,
+)
 from applybn.core.estimators import BNEstimator
 from applybn.anomaly_detection.scores.proximity_based import LocalOutlierScore
 from applybn.anomaly_detection.scores.mixed import ODBPScore
@@ -9,13 +11,19 @@ import numpy as np
 
 from bamt.preprocessors import Preprocessor
 from sklearn import preprocessing as pp
-from sklearn.model_selection import StratifiedKFold, StratifiedShuffleSplit, cross_val_score, permutation_test_score
+from sklearn.model_selection import (
+    StratifiedKFold,
+    StratifiedShuffleSplit,
+    cross_val_score,
+    permutation_test_score,
+)
 
 from sklearn.metrics import f1_score, make_scorer
 import pandas as pd
 
 import matplotlib.pyplot as plt
 import seaborn as sns
+
 # np.random.seed(20)
 # Ecoli dataset
 from ucimlrepo import fetch_ucirepo
@@ -67,15 +75,13 @@ print(df.shape)
 # for col in bytes_coded:
 #     df[col] = df[col].str.decode("utf-8")
 
-estimator = BNEstimator(has_logit=True,
-                        use_mixture=False,
-                        bn_type="cont")
+estimator = BNEstimator(has_logit=True, use_mixture=False, bn_type="cont")
 
 # encoder = pp.LabelEncoder()
-discretizer = pp.KBinsDiscretizer(n_bins=10, encode='ordinal', strategy='quantile')
+discretizer = pp.KBinsDiscretizer(n_bins=10, encode="ordinal", strategy="quantile")
 
 # create a preprocessor object with encoder and discretizer
-p = Preprocessor([('discretizer', discretizer)])
+p = Preprocessor([("discretizer", discretizer)])
 # discretize data for structure learning
 discretized_data, encoding = p.apply(df)
 
@@ -95,19 +101,23 @@ score_proximity = LocalOutlierScore()
 # raise Exception
 
 score = ODBPScore(score_proximity, encoding=encoding, proximity_steps=PROX_STEPS)
-local_detector = TabularDetector(estimator,
-                                 score=score,
-                                 target_name=None)
+local_detector = TabularDetector(estimator, score=score, target_name=None)
 cv = 20
 # skf = StratifiedKFold(n_splits=cv, shuffle=True, random_state=20)
 sss = StratifiedShuffleSplit(n_splits=cv, random_state=20)
 
-cross_val_scores = cross_val_score(local_detector, df, y, scoring=make_scorer(my_score),
-                                   cv=sss, verbose=2,
-                                   params={"structure": "ecoli_entire_data_structure.json"}, error_score="raise")
+cross_val_scores = cross_val_score(
+    local_detector,
+    df,
+    y,
+    scoring=make_scorer(my_score),
+    cv=sss,
+    verbose=2,
+    params={"structure": "ecoli_entire_data_structure.json"},
+    error_score="raise",
+)
 print(cross_val_scores)
-print(cross_val_scores.mean().round(5),
-      cross_val_scores.std().round(5))
+print(cross_val_scores.mean().round(5), cross_val_scores.std().round(5))
 
 # score, permutation_scores, pvalue = permutation_test_score(local_detector, df, y, scoring=make_scorer(my_score),
 #                                                            cv=skf, verbose=2, n_jobs=10, n_permutations=1000,

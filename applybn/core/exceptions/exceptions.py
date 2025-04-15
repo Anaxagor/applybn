@@ -5,6 +5,7 @@ from rich.traceback import install
 console = Console(force_terminal=True, soft_wrap=True)
 install(console=console, width=500)
 
+
 class LibraryError(Exception):
     """
     Base class for all exceptions raised by the library.
@@ -23,6 +24,7 @@ class LibraryError(Exception):
         if message is None:
             message = "An error occurred in applybn."
         super().__init__(message)
+
 
 class InvalidInputError(LibraryError):
     """

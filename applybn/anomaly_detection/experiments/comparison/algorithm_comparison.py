@@ -1,8 +1,13 @@
 # import json
 import scipy
-from applybn.anomaly_detection.static_anomaly_detector.tabular_detector import TabularDetector
+from applybn.anomaly_detection.static_anomaly_detector.tabular_detector import (
+    TabularDetector,
+)
 from applybn.core.estimators import BNEstimator
-from applybn.anomaly_detection.scores.proximity_based import LocalOutlierScore, IsolationForestScore
+from applybn.anomaly_detection.scores.proximity_based import (
+    LocalOutlierScore,
+    IsolationForestScore,
+)
 from applybn.anomaly_detection.scores.model_based import ModelBasedScore
 from applybn.anomaly_detection.scores.mixed import ODBPScore
 
@@ -13,7 +18,11 @@ import seaborn as sns
 
 from bamt.preprocessors import Preprocessor
 from sklearn import preprocessing as pp
-from sklearn.model_selection import StratifiedKFold, StratifiedShuffleSplit, cross_val_score
+from sklearn.model_selection import (
+    StratifiedKFold,
+    StratifiedShuffleSplit,
+    cross_val_score,
+)
 from sklearn.model_selection import ParameterGrid
 
 from sklearn.metrics import f1_score, make_scorer
@@ -49,7 +58,9 @@ def body(df_getter, scorer_class, cv=10, verbose=False, additional_scorer=None):
             df, y, estimator = learn_structure(df_getter)
             scorer = scorer_class()
         case "ODBPScore":
-            df, y, estimator, encoding = learn_structure(df_getter, return_encoding=True)
+            df, y, estimator, encoding = learn_structure(
+                df_getter, return_encoding=True
+            )
             if not additional_scorer:
                 raise Exception("Need prox scorer (additional scorer param)!!")
             scorer = scorer_class(additional_scorer, encoding)
@@ -59,7 +70,10 @@ def body(df_getter, scorer_class, cv=10, verbose=False, additional_scorer=None):
     cross_val_scores = []
 
     if verbose:
-        iterator = tqdm(splitter.split(df, y), total=splitter.get_n_splits(), )
+        iterator = tqdm(
+            splitter.split(df, y),
+            total=splitter.get_n_splits(),
+        )
     else:
         iterator = splitter.split(df, y)
 
@@ -67,9 +81,7 @@ def body(df_getter, scorer_class, cv=10, verbose=False, additional_scorer=None):
         X_train, X_test = df.iloc[train_indexes, :], df.iloc[test_indexes, :]
         y_train, y_test = y.iloc[train_indexes, :], y.iloc[test_indexes, :]
 
-        detector = TabularDetector(estimator,
-                                   score=scorer,
-                                   target_name=None)
+        detector = TabularDetector(estimator, score=scorer, target_name=None)
 
         # detector.estimator.bn.get_info(as_df=False)
 
@@ -94,12 +106,12 @@ def get_cardio():
     # mat = scipy.io.loadmat('../data/tabular/cardio.mat')
     # df, y = pd.DataFrame(mat["X"]), pd.DataFrame(mat["y"])
     # df.columns = [f"feature_{i}" for i in range(df.shape[1])]
-    df = pd.read_csv("../data/tabular/cardio.csv", index_col=0)
+    df = pd.read_csv("../../data/tabular/cardio.csv", index_col=0)
     return df, pd.DataFrame(df.pop("anomaly"))
 
 
 def get_ecoli():
-    df = pd.read_csv("../data/tabular/ecoli.csv")
+    df = pd.read_csv("../../data/tabular/ecoli.csv")
     return df, pd.DataFrame(df.pop("y"))
 
 
@@ -108,39 +120,38 @@ def get_wbc():
     # df, y = pd.DataFrame(mat["X"]), pd.DataFrame(mat["y"])
     # df.columns = [f"feature_{i}" for i in range(df.shape[1])]
 
-    df = pd.read_csv("../data/tabular/wbc.csv", index_col=0)
+    df = pd.read_csv("../../data/tabular/wbc.csv", index_col=0)
     return df.iloc[:, :20], pd.DataFrame(df.pop("anomaly"))
 
 
 def learn_structure(df_getter: callable, full=False, return_encoding=False):
     df, y = df_getter()
     if full:
-        df['y'] = y.iloc[:, 0].to_numpy().astype(int)
+        df["y"] = y.iloc[:, 0].to_numpy().astype(int)
         bn_type = "hybrid"
     else:
         bn_type = "cont"
 
-    estimator = BNEstimator(has_logit=True,
-                            use_mixture=False,
-                            bn_type=bn_type)
+    estimator = BNEstimator(has_logit=True, use_mixture=False, bn_type=bn_type)
 
-    discretizer = pp.KBinsDiscretizer(n_bins=10, encode='ordinal', strategy='quantile')
+    discretizer = pp.KBinsDiscretizer(n_bins=10, encode="ordinal", strategy="quantile")
 
     # create a preprocessor object with encoder and discretizer
-    p = Preprocessor([('discretizer', discretizer)])
+    p = Preprocessor([("discretizer", discretizer)])
     # discretize data for structure learning
     discretized_data, encoding = p.apply(df)
 
     #  get information about data
     info = p.info
     if full:
-        bl_add = [('y', node_name) for node_name in df.columns]
+        bl_add = [("y", node_name) for node_name in df.columns]
         bn_params = {"params": {"bl_add": bl_add}}
     else:
         bn_params = {}
 
-    estimator.fit(discretized_data, clean_data=df, partial=True,
-                  descriptor=info, **bn_params) # , progress_bar=False
+    estimator.fit(
+        discretized_data, clean_data=df, partial=True, descriptor=info, **bn_params
+    )  # , progress_bar=False
 
     if full:
         if not estimator.bn["y"].disc_parents + estimator.bn["y"].cont_parents:
@@ -161,8 +172,7 @@ mixed_score = ODBPScore
 # conditions = {"score": [model_based_score, lof, isolation_forest],
 #               "df_getter_args": [get_wbc]}
 
-conditions = {"score": [mixed_score],
-              "df_getter_args": [get_wbc]}
+conditions = {"score": [mixed_score], "df_getter_args": [get_wbc]}
 
 grid = ParameterGrid(conditions)
 

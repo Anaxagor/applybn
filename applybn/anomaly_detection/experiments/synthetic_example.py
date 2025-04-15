@@ -1,4 +1,6 @@
-from applybn.anomaly_detection.static_anomaly_detector.tabular_detector import TabularDetector
+from applybn.anomaly_detection.static_anomaly_detector.tabular_detector import (
+    TabularDetector,
+)
 from applybn.core.estimators import BNEstimator
 from applybn.anomaly_detection.scores.proximity_based import LocalOutlierScore
 from applybn.anomaly_detection.scores.mixed import ODBPScore
@@ -24,15 +26,17 @@ ANOMALY_PROBA = 0.05
 
 def f(x1, x2, a, b):
     # return a * x1 + b * x2 + a * b
-    return a * x1 ** 2 + b * x2 + a * b
+    return a * x1**2 + b * x2 + a * b
 
 
-def bomb_prox(df, shifts_params,
-              anomaly_proba,
-              target="feature3", out_name="anomaly"):
+def bomb_prox(df, shifts_params, anomaly_proba, target="feature3", out_name="anomaly"):
     shifts = np.random.normal(**shifts_params, size=1000)
 
-    indexes_left = np.random.choice([1, 0], 1000, p=[anomaly_proba, 1 - anomaly_proba], )
+    indexes_left = np.random.choice(
+        [1, 0],
+        1000,
+        p=[anomaly_proba, 1 - anomaly_proba],
+    )
     shifts[indexes_left == 0] = 0
 
     if all(indexes_left == 0):
@@ -50,14 +54,17 @@ def bomb_model(df, target1="feature2", target2="feature3", out_name="anomaly"):
 
     aux_model = LinearRegression()
 
-    aux_model.fit(df[target1].to_numpy().reshape(-1, 1),
-                  df[target2].to_numpy().reshape(-1, 1))
+    aux_model.fit(
+        df[target1].to_numpy().reshape(-1, 1), df[target2].to_numpy().reshape(-1, 1)
+    )
 
     anomaly_locs = df.sample(number_of_anomaly_points).index
 
     df_[target1][anomaly_locs] += 25
 
-    anomaly_preds = aux_model.predict(df_[target1][anomaly_locs].to_numpy().reshape(-1, 1))
+    anomaly_preds = aux_model.predict(
+        df_[target1][anomaly_locs].to_numpy().reshape(-1, 1)
+    )
 
     noise = np.random.normal(loc=10, scale=500, size=(anomaly_preds.shape[0], 1))
     anomaly_preds += noise
@@ -75,10 +82,13 @@ N = 1
 final = {"scores": {"f1": []}}
 for n in range(N):
     print(n)
-    df = pd.DataFrame({"feature1": np.random.normal(scale=VAR_F1, size=1000, loc=MEAN_F1),
-                       "feature2": np.random.normal(scale=VAR_F2, size=1000, loc=MEAN_F2),
-                       "feature4": np.random.normal(scale=A, size=1000, loc=B),
-                       })
+    df = pd.DataFrame(
+        {
+            "feature1": np.random.normal(scale=VAR_F1, size=1000, loc=MEAN_F1),
+            "feature2": np.random.normal(scale=VAR_F2, size=1000, loc=MEAN_F2),
+            "feature4": np.random.normal(scale=A, size=1000, loc=B),
+        }
+    )
 
     df["feature3"] = f(df["feature1"], df["feature2"], A, B)
     df = bomb_prox(df, shifts_params=PROX_SHIFTS, anomaly_proba=ANOMALY_PROBA)
@@ -97,14 +107,13 @@ for n in range(N):
 
     y_train = df.pop("anomaly")
 
-    estimator = BNEstimator(has_logit=True,
-                            bn_type="cont")
+    estimator = BNEstimator(has_logit=True, bn_type="cont")
 
     # encoder = pp.LabelEncoder()
-    discretizer = pp.KBinsDiscretizer(n_bins=5, encode='ordinal', strategy='uniform')
+    discretizer = pp.KBinsDiscretizer(n_bins=5, encode="ordinal", strategy="uniform")
 
     # create a preprocessor object with encoder and discretizer
-    p = Preprocessor([('discretizer', discretizer)])
+    p = Preprocessor([("discretizer", discretizer)])
     # p = Preprocessor([])
     discretized_data, encoding = p.apply(df)
     info = p.info
@@ -112,12 +121,12 @@ for n in range(N):
     score_proximity = LocalOutlierScore(n_neighbors=20)
     score = ODBPScore(estimator, score_proximity, encoding=encoding, proximity_steps=2)
 
-    detector = TabularDetector(estimator,
-                               score=score,
-                               target_name=None)
+    detector = TabularDetector(estimator, score=score, target_name=None)
 
     detector.estimator.bn.add_nodes(info)
-    detector.estimator.bn.set_structure(edges=[["feature1", 'feature3'], ["feature2", "feature3"]])
+    detector.estimator.bn.set_structure(
+        edges=[["feature1", "feature3"], ["feature2", "feature3"]]
+    )
     detector.estimator.bn.fit_parameters(df)
 
     # detector.fit(discretized_data, y=None,
@@ -130,9 +139,12 @@ for n in range(N):
     # detector.estimator.bn.get_info(as_df=False)
     outlier_scores = detector.detect(df, return_scores=True)
 
-    final_ = pd.DataFrame(np.hstack([outlier_scores.values.reshape(-1, 1),
-                                    y_train.values.reshape(-1, 1)]),
-                         columns=["scores", "anomaly"])
+    final_ = pd.DataFrame(
+        np.hstack(
+            [outlier_scores.values.reshape(-1, 1), y_train.values.reshape(-1, 1)]
+        ),
+        columns=["scores", "anomaly"],
+    )
 
     # print(
     #     f"Model impact: {detector.score.model_impact} \n"
@@ -141,10 +153,12 @@ for n in range(N):
     # desc = f"""[Linear, no scaler, model metric:Z-score, summation]"""
 
     plt.figure()
-    sns.scatterplot(data=final_, x=range(final_.shape[0]),
-                    y="scores", hue="anomaly") \
-        .set_title("Scores; Impacts(P, M): "
-                   f"[{detector.score.proximity_impact.round(3)}, {detector.score.model_impact.round(3)}]")
+    sns.scatterplot(
+        data=final_, x=range(final_.shape[0]), y="scores", hue="anomaly"
+    ).set_title(
+        "Scores; Impacts(P, M): "
+        f"[{detector.score.proximity_impact.round(3)}, {detector.score.model_impact.round(3)}]"
+    )
 
     # plt.savefig(f"synth_results/{desc}.png")
     plt.show()
@@ -158,9 +172,11 @@ for n in range(N):
 
     final["scores"]["f1"].append(np.max(f1_scores))
 
-print(final['scores']["f1"])
-print(f"Mean Score: {np.mean(final['scores']['f1']).round(3)}\n"
-      f"Std: {np.std(final['scores']['f1']).round(3)}")
+print(final["scores"]["f1"])
+print(
+    f"Mean Score: {np.mean(final['scores']['f1']).round(3)}\n"
+    f"Std: {np.std(final['scores']['f1']).round(3)}"
+)
 
 # print(f"Mean recall: {np.mean(final['scores']['recall']).round(3)}\n")
 # print(f"Mean precision: {np.mean(final['scores']['precision']).round(3)}\n")

@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, ClassifierMixin, _fit_context
+
 # from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 
 from bamt.networks import DiscreteBN, HybridBN, ContinuousBN
@@ -15,14 +16,15 @@ class BNEstimator(BaseEstimator):
     _parameter_constraints = {
         "has_logit": [bool],
         "use_mixture": [bool],
-        "bn_type": [str]
+        "bn_type": [str],
     }
 
-    def __init__(self,
-                 has_logit: bool = False,
-                 use_mixture: bool = False,
-                 bn_type: Literal["hybrid", "disc", "cont"] = "hybrid"
-                 ):
+    def __init__(
+        self,
+        has_logit: bool = False,
+        use_mixture: bool = False,
+        bn_type: Literal["hybrid", "disc", "cont"] = "hybrid",
+    ):
         str2net = {"hybrid": HybridBN, "disc": DiscreteBN, "cont": ContinuousBN}
         self.has_logit = has_logit
         self.use_mixture = use_mixture
@@ -43,14 +45,17 @@ class BNEstimator(BaseEstimator):
         self.bn = str2net[bn_type](**params)
 
     @_fit_context(prefer_skip_nested_validation=True)
-    def fit(self, X,
-            # inverse_transformer: callable,
-            descriptor: dict,
-            clean_data=None,
-            y=None,
-            partial: bool = False,
-            only_params: bool = False,
-            **kwargs: Unpack[ParamDict]):
+    def fit(
+        self,
+        X,
+        # inverse_transformer: callable,
+        descriptor: dict,
+        clean_data=None,
+        y=None,
+        partial: bool = False,
+        only_params: bool = False,
+        **kwargs: Unpack[ParamDict],
+    ):
         """
         # todo: remove passing 2 dataframes, instead use partial arg
         # todo: doctest format
@@ -86,7 +91,7 @@ class BNEstimator(BaseEstimator):
         # todo: turn into vectors? very slow
         probas = []
         for indx, row in X.iterrows():
-            anom_index = self.bn.distributions["y"]["classes"].index('1')
+            anom_index = self.bn.distributions["y"]["classes"].index("1")
             try:
                 result = self.bn.get_dist("y", pvals=row.to_dict())[int(anom_index)]
             except KeyError:
@@ -95,10 +100,7 @@ class BNEstimator(BaseEstimator):
 
         return pd.Series(probas)
 
-    def inject_target(self,
-                      y,
-                      data,
-                      node: Type[BaseNode] = DiscreteNode):
+    def inject_target(self, y, data, node: Type[BaseNode] = DiscreteNode):
         if not self.bn.edges:
             # todo
             raise Exception("bn.edges is empty")
@@ -125,10 +127,13 @@ class BNEstimator(BaseEstimator):
         data[target_name] = y.to_numpy()
 
         # noinspection PyTypeChecker
-        self.bn.add_edges(data=data,
-                          params={"init_edges": list(map(tuple, normal_structure)),
-                                  "bl_add": bl_add,
-                                  "remove_init_edges": False}
-                          )
+        self.bn.add_edges(
+            data=data,
+            params={
+                "init_edges": list(map(tuple, normal_structure)),
+                "bl_add": bl_add,
+                "remove_init_edges": False,
+            },
+        )
 
         return self

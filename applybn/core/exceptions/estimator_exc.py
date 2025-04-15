@@ -1,7 +1,9 @@
 from applybn.core.exceptions.exceptions import LibraryError
 
+
 class EstimatorExc(LibraryError):
     pass
+
 
 class NodesAutoTypingError(EstimatorExc):
     def __init__(self, nodes):

@@ -4,8 +4,9 @@ from sklearn.utils.validation import check_array, check_X_y
 import numpy as np
 from typing import Union, Tuple
 
+
 class CausalFeatureSelector(BaseEstimator, SelectorMixin):
-    def __init__(self, n_bins: Union[int, str] = 'auto'):
+    def __init__(self, n_bins: Union[int, str] = "auto"):
         """
         Initialize the causal feature selector.
 
@@ -14,7 +15,7 @@ class CausalFeatureSelector(BaseEstimator, SelectorMixin):
         """
         self.n_bins = n_bins
 
-    def fit(self, X: np.ndarray, y: np.ndarray) -> 'CausalFeatureSelector':
+    def fit(self, X: np.ndarray, y: np.ndarray) -> "CausalFeatureSelector":
         """
         Fit the causal feature selector to the data.
 
@@ -47,7 +48,9 @@ class CausalFeatureSelector(BaseEstimator, SelectorMixin):
         """
         # Discretize target and features
         target_discretized = self._discretize_data_iqr(target)[0]
-        data_discretized = np.array([self._discretize_data_iqr(data[:, i])[0] for i in range(data.shape[1])]).T
+        data_discretized = np.array(
+            [self._discretize_data_iqr(data[:, i])[0] for i in range(data.shape[1])]
+        ).T
 
         selected_mask = np.zeros(data.shape[1], dtype=bool)
         other_features = np.array([])
@@ -92,7 +95,11 @@ class CausalFeatureSelector(BaseEstimator, SelectorMixin):
 
         n = len(data)
         # Determine the number of bins
-        n_bins = self.n_bins if self.n_bins != 'auto' else max(2, int(np.ceil((R / (2 * iqr * n ** (1/3))) * np.log2(n + 1))))
+        n_bins = (
+            self.n_bins
+            if self.n_bins != "auto"
+            else max(2, int(np.ceil((R / (2 * iqr * n ** (1 / 3))) * np.log2(n + 1))))
+        )
 
         bins = np.linspace(np.min(data), np.max(data), n_bins + 1)
         discretized_data = np.digitize(data, bins) - 1
@@ -100,7 +107,9 @@ class CausalFeatureSelector(BaseEstimator, SelectorMixin):
 
         return discretized_data, bins
 
-    def _causal_effect(self, Xi: np.ndarray, Y: np.ndarray, other_features: np.ndarray) -> float:
+    def _causal_effect(
+        self, Xi: np.ndarray, Y: np.ndarray, other_features: np.ndarray
+    ) -> float:
         """
         Compute the causal effect of Xi on Y, controlling for other features.
 
@@ -117,13 +126,24 @@ class CausalFeatureSelector(BaseEstimator, SelectorMixin):
 
         if other_features.size > 0:
             # Discretize other features if they exist
-            other_features_discretized = np.array([self._discretize_data_iqr(other_features[:, i])[0] for i in range(other_features.shape[1])]).T
+            other_features_discretized = np.array(
+                [
+                    self._discretize_data_iqr(other_features[:, i])[0]
+                    for i in range(other_features.shape[1])
+                ]
+            ).T
             combined_features = np.c_[other_features_discretized, Xi_discretized]
-            H_Y_given_other = self._conditional_entropy(other_features_discretized, Y_discretized)
-            H_Y_given_Xi_other = self._conditional_entropy(combined_features, Y_discretized)
+            H_Y_given_other = self._conditional_entropy(
+                other_features_discretized, Y_discretized
+            )
+            H_Y_given_Xi_other = self._conditional_entropy(
+                combined_features, Y_discretized
+            )
             return H_Y_given_other - H_Y_given_Xi_other
         else:
-            return self._entropy(Y_discretized) - self._conditional_entropy(Xi_discretized, Y_discretized)
+            return self._entropy(Y_discretized) - self._conditional_entropy(
+                Xi_discretized, Y_discretized
+            )
 
     def _entropy(self, discretized_data: np.ndarray) -> float:
         """
@@ -137,7 +157,9 @@ class CausalFeatureSelector(BaseEstimator, SelectorMixin):
         """
         value_counts = np.unique(discretized_data, return_counts=True)[1]
         probabilities = value_counts / len(discretized_data)
-        return -np.sum(probabilities[probabilities > 0] * np.log2(probabilities[probabilities > 0]))
+        return -np.sum(
+            probabilities[probabilities > 0] * np.log2(probabilities[probabilities > 0])
+        )
 
     def _conditional_entropy(self, X: np.ndarray, Y: np.ndarray) -> float:
         """
@@ -156,7 +178,7 @@ class CausalFeatureSelector(BaseEstimator, SelectorMixin):
         for x in unique_x:
             # Mask for rows where X equals the current unique value
             if X.ndim == 1:
-                mask = (X == x)  # Simple comparison for 1D array
+                mask = X == x  # Simple comparison for 1D array
             else:
                 mask = np.all(X == x, axis=1)
             subset_entropy = self._entropy(Y[mask])

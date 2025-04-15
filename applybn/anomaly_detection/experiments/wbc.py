@@ -1,6 +1,8 @@
 import json
 
-from applybn.anomaly_detection.static_anomaly_detector.tabular_detector import TabularDetector
+from applybn.anomaly_detection.static_anomaly_detector.tabular_detector import (
+    TabularDetector,
+)
 from applybn.core.estimators import BNEstimator
 from applybn.anomaly_detection.scores.proximity_based import LocalOutlierScore
 from applybn.anomaly_detection.scores.mixed import ODBPScore
@@ -37,7 +39,7 @@ import pandas as pd
 # for col in bytes_coded:
 #     df[col] = df[col].str.decode("utf-8")
 
-mat = scipy.io.loadmat('/home/roman/Desktop/BAMT/applyBN/data/wbc.mat')
+mat = scipy.io.loadmat("/home/roman/Desktop/BAMT/applyBN/data/wbc.mat")
 df, y = pd.DataFrame(mat["X"]), pd.DataFrame(mat["y"])
 print(df.shape)
 
@@ -53,15 +55,13 @@ for train_indexes, test_indexes in skf.split(df, y):
     X_train, X_test = df.iloc[train_indexes, :], df.iloc[test_indexes, :]
     y_train, y_test = y.iloc[train_indexes, :], y.iloc[test_indexes, :]
 
-    estimator = BNEstimator(has_logit=True,
-                            use_mixture=True,
-                            bn_type="cont")
+    estimator = BNEstimator(has_logit=True, use_mixture=True, bn_type="cont")
 
     # encoder = pp.LabelEncoder()
-    discretizer = pp.KBinsDiscretizer(n_bins=10, encode='ordinal', strategy='quantile')
+    discretizer = pp.KBinsDiscretizer(n_bins=10, encode="ordinal", strategy="quantile")
 
     # create a preprocessor object with encoder and discretizer
-    p = Preprocessor([('discretizer', discretizer)])
+    p = Preprocessor([("discretizer", discretizer)])
     # discretize data for structure learning
     discretized_data, encoding = p.apply(X_train)
 
@@ -85,21 +85,30 @@ for train_indexes, test_indexes in skf.split(df, y):
     score_proximity = LocalOutlierScore()
     score = ODBPScore(score_proximity, encoding=encoding, proximity_steps=PROX_STEPS)
 
-    detector = TabularDetector(estimator,
-                               score=score,
-                               target_name=None)
+    detector = TabularDetector(estimator, score=score, target_name=None)
 
-    detector.fit(discretized_data, y=None,
-                 clean_data=X_train, descriptor=info,
-                 inject=False, bn_params={"scoring_function": ("K2",),
-                                          "progress_bar": False})
+    detector.fit(
+        discretized_data,
+        y=None,
+        clean_data=X_train,
+        descriptor=info,
+        inject=False,
+        bn_params={"scoring_function": ("K2",), "progress_bar": False},
+    )
 
     # detector.estimator.bn.get_info(as_df=False)
 
     outlier_scores = detector.predict(X_test, return_scores=True)
 
-    final = pd.DataFrame(np.hstack([outlier_scores.values.reshape(-1, 1), y_test.values.reshape(-1, 1).astype(int)]),
-                         columns=["score", "anomaly"])
+    final = pd.DataFrame(
+        np.hstack(
+            [
+                outlier_scores.values.reshape(-1, 1),
+                y_test.values.reshape(-1, 1).astype(int),
+            ]
+        ),
+        columns=["score", "anomaly"],
+    )
 
     thresholds = np.linspace(1, outlier_scores.max(), 100)
     eval_scores = []

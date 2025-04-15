@@ -1,12 +1,14 @@
 from applybn.anomaly_detection.scores.score import Score
 from sklearn.neighbors import LocalOutlierFactor
 
+from tqdm import tqdm
 from sklearn.ensemble import IsolationForest
 import numpy as np
 
+
 class LocalOutlierScore(Score):
-    def __init__(self,  proximity_steps, verbosity=1, **kwargs):
-        super().__init__(verbosity)
+    def __init__(self, proximity_steps=5, verbose=1, **kwargs):
+        super().__init__(verbose)
         self.params = kwargs
         self.proximity_steps = proximity_steps
 
@@ -18,24 +20,32 @@ class LocalOutlierScore(Score):
 
     def score(self, X):
         proximity_factors = []
-        # if self.verbose >= 1:
-        #     proximity_iterator = tqdm(range(self.proximity_steps), desc="Proximity")
-        # else:
-        #     proximity_iterator = range(self.proximity_steps)
 
-        while len(proximity_factors) < self.proximity_steps:
+        proximity_iterator = (
+            tqdm(range(self.proximity_steps), desc="Proximity")
+            if self.verbose >= 1
+            else range(self.proximity_steps)
+        )
+
+        for _ in proximity_iterator:
             try:
-                t = np.random.randint(X.shape[1] // 2, X.shape[1] - 1)
+                t = np.random.randint(X.shape[1] // 2, X.shape[1])
                 columns = np.random.choice(X.columns, t, replace=False)
 
-                subset = X[columns]
-                subset_cont = subset.select_dtypes(include=["number"])
+                subset = X[columns].select_dtypes(include=["number"])
 
                 # The higher, the more abnormal
-                outlier_factors = self.local_score(subset_cont)
+                outlier_factors = self.local_score(subset)
+                proximity_factors.append(outlier_factors)
+
             except ValueError:
+                # Skip iterations with invalid subsets
                 continue
-            proximity_factors.append(outlier_factors)
+
+        if not proximity_factors:
+            raise RuntimeError(
+                "No valid proximity scores could be computed. Do you have any cont columns?"
+            )
 
         return np.vstack(proximity_factors).T
 

@@ -9,6 +9,7 @@ from pgmpy.inference import VariableElimination
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+
 class BNFeatureGenerator(BaseEstimator, TransformerMixin):
     """
     A class for generating new features based on Bayesian Network inference.
@@ -24,8 +25,11 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
         num_classes (Optional[int]): Number of unique classes in the target variable.
     """
 
-    def __init__(self, known_structure: Optional[List[Tuple[str, str]]] = None, random_seed: Optional[int] = None):
-
+    def __init__(
+        self,
+        known_structure: Optional[List[Tuple[str, str]]] = None,
+        random_seed: Optional[int] = None,
+    ):
         """
         Initializes the BNFeatureGenerator.
 
@@ -39,8 +43,12 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
         self.num_classes: Optional[int] = None
         self.random_seed = random_seed
 
-    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None,
-            black_list: Optional[List[Tuple[str, str]]] = None) -> 'BNFeatureGenerator':
+    def fit(
+        self,
+        X: pd.DataFrame,
+        y: Optional[pd.Series] = None,
+        black_list: Optional[List[Tuple[str, str]]] = None,
+    ) -> "BNFeatureGenerator":
         """
         Fits the Bayesian Network to the input data.
 
@@ -72,11 +80,15 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
                 # Fit the network with known structure
                 self.bn.fit(X, estimator=BayesianEstimator)
             except Exception as e:
-                logging.exception(f"Error when training a Bayesian Network with a known structure: {e}")
+                logging.exception(
+                    f"Error when training a Bayesian Network with a known structure: {e}"
+                )
                 raise
         else:
             # If the structure is unknown, use the constructor to build it
-            constructor = self._BayesianNetworkConstructor(X, black_list, self.random_seed)
+            constructor = self._BayesianNetworkConstructor(
+                X, black_list, self.random_seed
+            )
             self.bn = constructor.construct_network()
 
         return self
@@ -102,7 +114,9 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
 
         def process_feature(feature, row):
             # Get the values of parent nodes for the current feature
-            evidence = {f: row[f] for f in self.bn.get_parents(feature) if f in row.index}
+            evidence = {
+                f: row[f] for f in self.bn.get_parents(feature) if f in row.index
+            }
             try:
                 # Perform probabilistic inference
                 prob = inference.query([feature], evidence=evidence)
@@ -121,8 +135,7 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
         with ThreadPoolExecutor() as executor:
             results = list(executor.map(process_row, [row for _, row in X.iterrows()]))
         # Form a DataFrame of generated features
-        return pd.DataFrame(results, columns=[f'lambda_{c}' for c in self.variables])
-
+        return pd.DataFrame(results, columns=[f"lambda_{c}" for c in self.variables])
 
     class _BayesianNetworkConstructor:
         """
@@ -140,7 +153,12 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
             black_list (Set[Tuple[str, str]]): Set of edges to be excluded from the network.
         """
 
-        def __init__(self, data: pd.DataFrame, black_list: Optional[List[Tuple[str, str]]] = None, random_seed: Optional[int] = None):
+        def __init__(
+            self,
+            data: pd.DataFrame,
+            black_list: Optional[List[Tuple[str, str]]] = None,
+            random_seed: Optional[int] = None,
+        ):
             """
             Initializes the BayesianNetworkConstructor.
 
@@ -181,8 +199,9 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
             used_nodes = {nodes.pop(0)}
             while nodes:
                 child = nodes.pop(0)
-                valid_parents = [p for p in used_nodes
-                                 if self.is_valid_edge((p, child))]
+                valid_parents = [
+                    p for p in used_nodes if self.is_valid_edge((p, child))
+                ]
                 if valid_parents:
                     parent = self.random_generator.choice(valid_parents)
                     edges.append((parent, child))
@@ -192,7 +211,9 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
 
             return BayesianNetwork(edges)
 
-        def calculate_network_score(self, network: BayesianNetwork, sample_data: pd.DataFrame) -> float:
+        def calculate_network_score(
+            self, network: BayesianNetwork, sample_data: pd.DataFrame
+        ) -> float:
             """
             Calculates the score of a given Bayesian Network.
 
@@ -228,29 +249,35 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
                 Exception: For any unexpected errors during modification.
             """
             edges = list(network.edges())
-            if not edges and self.random_generator.choice(['add', 'delete', 'reverse']) != 'add':
+            if (
+                not edges
+                and self.random_generator.choice(["add", "delete", "reverse"]) != "add"
+            ):
                 # If no edges exist, we can only add
                 return network
             # Choose operation to perform
-            operation = self.random_generator.choice(['add', 'delete', 'reverse'])
+            operation = self.random_generator.choice(["add", "delete", "reverse"])
             new_edges = edges.copy()
             try:
-                if operation == 'add' and len(edges) < max_arcs:
+                if operation == "add" and len(edges) < max_arcs:
                     attempts = 0
                     while attempts < 10:
                         node1, node2 = self.random_generator.sample(self.variables, 2)
                         new_edge = (node1, node2)
                         reverse_edge = (node2, node1)
                         # Check that the edge doesn't exist and isn't blacklisted
-                        if (new_edge not in edges and reverse_edge not in edges
-                                and self.is_valid_edge(new_edge)):
+                        if (
+                            new_edge not in edges
+                            and reverse_edge not in edges
+                            and self.is_valid_edge(new_edge)
+                        ):
                             new_edges.append(new_edge)
                             break
                         attempts += 1
-                elif operation == 'delete' and edges:
+                elif operation == "delete" and edges:
                     edge = self.random_generator.choice(edges)
                     new_edges.remove(edge)
-                elif operation == 'reverse' and edges:
+                elif operation == "reverse" and edges:
                     edge = self.random_generator.choice(edges)
                     reverse_edge = (edge[1], edge[0])
                     if self.is_valid_edge(reverse_edge):
@@ -282,8 +309,9 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
             sample_size = max(len(self.data) // 10, 2)
             max_arcs = self.initial_max_arcs
             # Start with a forest structure
-            current_score = self.calculate_network_score(current_network,
-                                                         self.data.sample(n=sample_size))
+            current_score = self.calculate_network_score(
+                current_network, self.data.sample(n=sample_size)
+            )
 
             for i in range(iterations):
                 # Increase sample size and maximum number of arcs every quarter of iterations
@@ -301,7 +329,7 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
                     current_score = new_score
                     self.repository.append((new_network, new_score))
                     self.repository.sort(key=lambda x: x[1], reverse=True)
-                    self.repository = self.repository[:self.max_repository_size]
+                    self.repository = self.repository[: self.max_repository_size]
                 elif self.repository:
                     # If the new network is not better, choose a network from the repository
                     current_network, current_score = random.choice(self.repository)

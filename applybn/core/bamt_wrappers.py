@@ -1,5 +1,6 @@
 from sklearn.base import BaseEstimator, TransformerMixin
 
+
 class BamtPreprocessorWrapper(BaseEstimator, TransformerMixin):
     """
     A wrapper class for BAMT preprocessors to make them compatible with scikit-learn pipelines.

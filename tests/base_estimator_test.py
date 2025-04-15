@@ -38,34 +38,19 @@ def mock_estimator(mocker):
 def generate_case(t="hybrid"):
     match t:
         case "hybrid":
-            column_types = {
-                "node1": "float64",
-                "node2": "int64",
-                "node3": "object"
-            }
+            column_types = {"node1": "float64", "node2": "int64", "node3": "object"}
         case "cont":
             column_types = {
                 "node1": "float64",
             }
         case "disc":
-            column_types = {
-                "node2": "int64",
-                "node3": "object"
-            }
+            column_types = {"node2": "int64", "node3": "object"}
         case "empty":
             column_types = {}
         case "auto_typing_error":
-            column_types = {
-                "node1": "float64",
-                "node2": "int64",
-                "node3": "category"
-            }
+            column_types = {"node1": "float64", "node2": "int64", "node3": "category"}
         case "invalid":
-            column_types = {
-                "node1": "float64",
-                "node2": "int64",
-                "node3": "blablalba"
-            }
+            column_types = {"node1": "float64", "node2": "int64", "node3": "blablalba"}
 
     @pytest.fixture
     def mock_data():
@@ -123,7 +108,9 @@ def test_detect_bn_empty(mock_data_empty):
 
 def test_init_bn_hybrid(estimator, mocker):
     """Test init_bn for hybrid network."""
-    mock_hybrid_bn = mocker.patch("applybn.core.estimators.base_estimator.HybridBN", return_value=MagicMock())
+    mock_hybrid_bn = mocker.patch(
+        "applybn.core.estimators.base_estimator.HybridBN", return_value=MagicMock()
+    )
     bn = estimator.init_bn("hybrid")
     mock_hybrid_bn.assert_called_once_with(use_mixture=True, has_logit=False)
 
@@ -132,7 +119,9 @@ def test_init_bn_hybrid(estimator, mocker):
 
 def test_init_bn_cont(estimator, mocker):
     """Test init_bn for continuous network."""
-    mock_cont_bn = mocker.patch("applybn.core.estimators.base_estimator.ContinuousBN", return_value=MagicMock())
+    mock_cont_bn = mocker.patch(
+        "applybn.core.estimators.base_estimator.ContinuousBN", return_value=MagicMock()
+    )
 
     bn = estimator.init_bn("cont")
 
@@ -142,7 +131,9 @@ def test_init_bn_cont(estimator, mocker):
 
 def test_init_bn_disc(estimator, mocker):
     """Test init_bn for discrete network."""
-    mock_disc_bn = mocker.patch("applybn.core.estimators.base_estimator.DiscreteBN", return_value=MagicMock())
+    mock_disc_bn = mocker.patch(
+        "applybn.core.estimators.base_estimator.DiscreteBN", return_value=MagicMock()
+    )
 
     bn = estimator.init_bn("disc")
 
@@ -208,7 +199,9 @@ def test_fit_parameters_raises_error(mock_estimator):
 
     estimator.bn_ = mock_bn  # Manually set to bypass initialization
 
-    with pytest.raises(NotFittedError, match="Trying to learn parameters on unfitted estimator"):
+    with pytest.raises(
+        NotFittedError, match="Trying to learn parameters on unfitted estimator"
+    ):
         estimator.fit((mock_X, descriptor, clean_data))
 
 
@@ -244,10 +237,9 @@ def test_fit_full_case(mock_estimator):
     mock_bn.add_edges.assert_called_once_with(mock_X, progress_bar=False)
     mock_bn.fit_parameters.assert_called_once_with(clean_data)
 
+
 def test_attribute_passing(estimator):
     estimator.bn_ = MagicMock(name="bn", spec=HybridBN)
 
     assert hasattr(estimator, "get_info")
     assert hasattr(estimator, "add_edges")
-
-

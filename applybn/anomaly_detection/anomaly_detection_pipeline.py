@@ -2,6 +2,7 @@ from applybn.core.pipelines import CorePipeline
 from functools import wraps
 from copy import deepcopy
 
+
 class AnomalyDetectionPipeline(CorePipeline):
     @staticmethod
     def _score_context(method):
@@ -22,7 +23,9 @@ class AnomalyDetectionPipeline(CorePipeline):
 
     @_score_context
     def score(self, X, y=None, sample_weight=None, **params):
-        return super(AnomalyDetectionPipeline, self).score(X, y, sample_weight, **params)
+        return super(AnomalyDetectionPipeline, self).score(
+            X, y, sample_weight, **params
+        )
 
     @classmethod
     def from_core_pipeline(cls, core_pipeline: CorePipeline):

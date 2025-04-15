@@ -9,6 +9,7 @@ from sklearn.base import ClassifierMixin, RegressorMixin
 from bamt.preprocessors import Preprocessor
 from sklearn import preprocessing as pp
 
+
 class EstimatorPipelineFactory:
     """
     Factory class to create an estimator pipeline for classification or regression tasks.
@@ -18,8 +19,8 @@ class EstimatorPipelineFactory:
         task_type (str): The type of task ('classification' or 'regression').
         estimator_ (Optional[BaseEstimator]): The estimator instance.
     """
-    interfaces = {"classification": ClassifierMixin,
-                  "regression": RegressorMixin}
+
+    interfaces = {"classification": ClassifierMixin, "regression": RegressorMixin}
 
     def __init__(self, task_type: str = "classification"):
         """
@@ -44,7 +45,9 @@ class EstimatorPipelineFactory:
         """
         return BamtPreprocessorWrapper(preprocessor)
 
-    def __call__(self, preprocessor: None | list = None, **params: Unpack[BNEstimatorParams]):
+    def __call__(
+        self, preprocessor: None | list = None, **params: Unpack[BNEstimatorParams]
+    ):
         """
         Creates a pipeline with the given preprocessor and parameters.
 
@@ -58,13 +61,13 @@ class EstimatorPipelineFactory:
         if preprocessor is None:
             preprocessor = self.default_preprocessor
 
-        # todo: args and kwargs unpacking
         self.estimator.set_params(**params)
 
         wrapped_preprocessor = self.convert_bamt_preprocessor(preprocessor)
 
-        pipeline = CorePipeline([("preprocessor", wrapped_preprocessor),
-                                 ("bn_estimator", self.estimator)])
+        pipeline = CorePipeline(
+            [("preprocessor", wrapped_preprocessor), ("bn_estimator", self.estimator)]
+        )
         return pipeline
 
     def _adjust_interface(self):
@@ -72,9 +75,13 @@ class EstimatorPipelineFactory:
         Adjusts the interface of the estimator based on the task type.
         """
         interface = self.interfaces[self.task_type]
-        names = {"regression": "RegressorMixin",
-                 "classification": "ClassifierMixin",}
-        new_class = type(f"BNEstimatorWith{names[self.task_type]}", (BNEstimator, interface), {})
+        names = {
+            "regression": "RegressorMixin",
+            "classification": "ClassifierMixin",
+        }
+        new_class = type(
+            f"BNEstimatorWith{names[self.task_type]}", (BNEstimator, interface), {}
+        )
         self.estimator_ = new_class()
 
     @property
@@ -92,6 +99,10 @@ class EstimatorPipelineFactory:
     @property
     def default_preprocessor(self):
         encoder = pp.LabelEncoder()
-        discretizer = pp.KBinsDiscretizer(n_bins=5, encode='ordinal', strategy='uniform')
-        preprocessor = Preprocessor([('encoder', encoder), ('discretizer', discretizer)])
+        discretizer = pp.KBinsDiscretizer(
+            n_bins=5, encode="ordinal", strategy="uniform"
+        )
+        preprocessor = Preprocessor(
+            [("encoder", encoder), ("discretizer", discretizer)]
+        )
         return preprocessor

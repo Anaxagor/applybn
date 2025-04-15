@@ -104,7 +104,9 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
 
         results = []
         X_nodes = X.columns
-        target_name = ({node.name for node in self.bn.nodes}-set(X_nodes)).pop()
+        target_name = ({node.name for node in self.bn.nodes}-set(X_nodes))
+        if target_name:
+            target_name = target_name.pop()
 
         # Process each feature (column) in the row (excluding target) using the BN
         for _, row in X.iterrows():

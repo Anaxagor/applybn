@@ -94,7 +94,7 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
         represents the calculated feature based on the fitted BN.
 
         Args:
-            X (pd.DataFrame) is the input DataFrame to transform.
+            X (pd.DataFrame): input DataFrame to transform.
 
         Returns:
             A new DataFrame with lambda-features.

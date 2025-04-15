@@ -6,7 +6,7 @@ from sklearn import preprocessing
 from sklearn.base import BaseEstimator, TransformerMixin
 import numpy as np
 from scipy.stats import norm
-from applybn.applybn.core.estimators.base_estimator import BNEstimator
+from applybn.core.estimators.base_estimator import BNEstimator
 class BNFeatureGenerator(BaseEstimator, TransformerMixin):
     """
     Generates features based on a Bayesian Network (BN).

@@ -6,7 +6,7 @@ from sklearn import preprocessing
 from sklearn.base import BaseEstimator, TransformerMixin
 import numpy as np
 from scipy.stats import norm
-from applybn.core.estimators.base_estimator import BNEstimator
+from applybn.applybn.core.estimators.base_estimator import BNEstimator
 class BNFeatureGenerator(BaseEstimator, TransformerMixin):
     """
     Generates features based on a Bayesian Network (BN).
@@ -14,7 +14,6 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
 
     def __init__(self):
         self.bn = None
-        self.target_name = ''
 
     def fit(self, X: pd.DataFrame, y: pd.Series | None = None):
         """
@@ -45,11 +44,9 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
             subsample=None
         )
         preprocessor = pp.Preprocessor([('encoder', encoder), ('discretizer', discretizer)])
-
+        target_name = None
         if y is not (None):
-            if y.name == '':
-                y = y.rename('target')
-            self.target_name = y.name
+            target_name = y.name
             X = pd.concat([X, y], axis=1).reset_index(drop=True)
         clean_data = X
 
@@ -60,8 +57,8 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
         info = preprocessor.info
         info =  {"types": info["types"], "signs": info['signs']}
         params = {}
-        if self.target_name:
-            bl = self.create_black_list(X, self.target_name)  # Edges to avoid
+        if target_name:
+            bl = self.create_black_list(X, target_name)  # Edges to avoid
             params = {'bl_add': bl}
         learning_params = {'params': params}
         bn_estimator = BNEstimator(use_mixture=False, has_logit=True, learning_params=learning_params)
@@ -72,7 +69,7 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
 
         return self
 
-    def _process_target(self, X: pd.DataFrame) -> pd.Series:
+    def _process_target(self, target_name, X: pd.DataFrame) -> pd.Series:
         """
         Processes the target variable by making predictions using the Bayesian Network.
 
@@ -82,11 +79,11 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
         Returns:
             Predictions for the target variable.
         """
-        if not self.target_name:
+        if not target_name:
             return None
 
         predictions = self.bn.predict(test=X, parall_count=-1, progress_bar=False)
-        return pd.Series(predictions[self.target_name])
+        return pd.Series(predictions[target_name])
 
     def transform(self, X: pd.DataFrame, fill_na: bool = True) -> pd.DataFrame:
         """
@@ -94,7 +91,7 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
         represents the calculated feature based on the fitted BN.
 
         Args:
-            X (pd.DataFrame): input DataFrame to transform.
+            X (pd.DataFrame) is the input DataFrame to transform.
 
         Returns:
             A new DataFrame with lambda-features.
@@ -106,8 +103,9 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
             return pd.DataFrame()  # Return an empty DataFrame to avoid further errors
 
         results = []
-        X_nodes = [node for node in map(str, self.bn.nodes) if node != self.target_name]
-        
+        X_nodes = X.columns
+        target_name = ({node.name for node in self.bn.nodes}-set(X_nodes)).pop()
+
         # Process each feature (column) in the row (excluding target) using the BN
         for _, row in X.iterrows():
             row_probs = [self.process_feature(feat, row, X, fill_na) for feat in X_nodes]
@@ -116,9 +114,9 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
         result = pd.DataFrame(results, columns=['lambda_' + c for c in X_nodes])
 
         # Process target
-        target_predictions = self._process_target(X)
+        target_predictions = self._process_target(target_name, X)
         if target_predictions is not None:
-            result['lambda_' + self.target_name] = target_predictions
+            result['lambda_' + target_name] = target_predictions
 
         return result
 
@@ -173,6 +171,7 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
         Processes a discrete node.
 
         Args:
+            node - the discrete node object.
             feature (str): the name of the feature (node).
             row (pd.Series): a row of data from the DataFrame.
             pvals (dict): list of parent values.

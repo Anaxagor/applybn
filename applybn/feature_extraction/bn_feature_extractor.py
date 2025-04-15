@@ -1,11 +1,10 @@
 import pandas as pd
 import bamt.preprocessors as pp
-from typing import Optional, List, Tuple
+from typing import Optional
 import logging
 from sklearn import preprocessing
 from sklearn.base import BaseEstimator, TransformerMixin
 import numpy as np
-from bamt.preprocess.discretization import code_categories
 from scipy.stats import norm
 from applybn.core.estimators.base_estimator import BNEstimator
 class BNFeatureGenerator(BaseEstimator, TransformerMixin):
@@ -54,9 +53,6 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
             X = pd.concat([X, y], axis=1).reset_index(drop=True)
         clean_data = X
 
-        cat_columns = X.select_dtypes(include=["object", "category", "bool", "string"]).columns.tolist()
-        if cat_columns:
-            X, cat_encoder = code_categories(X, method="label", columns=cat_columns)
         discretized_data, est = preprocessor.apply(X)
         discretized_data = pd.DataFrame(discretized_data, columns=X.columns)
 
@@ -107,15 +103,17 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
             logging.error(AttributeError,
                           "Parameter learning wasn't done. Call fit method"
                           )
-            return X
+            return pd.DataFrame()  # Return an empty DataFrame to avoid further errors
 
         results = []
-        # Process each feature (column) in the row using the BN
+        X_nodes = [node for node in map(str, self.bn.nodes) if node != self.target_name]
+        
+        # Process each feature (column) in the row (excluding target) using the BN
         for _, row in X.iterrows():
-            row_probs = [self.process_feature(feat, row, X, fill_na) for feat in list(map(str, self.bn.nodes))]
+            row_probs = [self.process_feature(feat, row, X, fill_na) for feat in X_nodes]
             results.append(row_probs)
 
-        result = pd.DataFrame(results, columns=['lambda_' + c for c in list(map(str, self.bn.nodes))])
+        result = pd.DataFrame(results, columns=['lambda_' + c for c in X_nodes])
 
         # Process target
         target_predictions = self._process_target(X)
@@ -145,39 +143,30 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
         Returns:
             The probability or observed value depending on the node type.
         """
-        if str(feature) != self.target_name:
 
-            try:
-                node = next((n for n in self.bn.nodes if n.name == feature), None)
+        node = next((n for n in self.bn.nodes if n.name == feature), None)
+        pvals = {}
+        pvals_disc = []
 
-                pvals = {}
-                pvals_disc = []
+        # Iterate through the continuous parents
+        for p in node.cont_parents:
+            pvals[p] = row[p]
 
-                # Iterate through the continuous parents
-                for p in node.cont_parents:
-                    pvals[p] = row[p]
-
-                # Iterate through the discrete parents
-                for p in node.disc_parents:
-                    norm_val = str(row[p])
-                    pvals[p] = norm_val
-                    pvals_disc.append(norm_val)
-
-                # Process discrete nodes
-                if node.type == 'Discrete' or 'logit' in node.type:
-                    vals = X[node.name].value_counts(normalize=True).sort_index()
-                    vals = [str(i) for i in vals.index.to_list()]
-                    return self._process_discrete_node(feature, row, pvals, vals, fill_na)
-
-                # Process non-discrete nodes
-                else:
-                    vals = X[node.name].value_counts(normalize=True).sort_index()
-                    vals = [(i) for i in vals.index.to_list()]
-                    return self._process_non_discrete_node(feature, row, pvals, vals, fill_na)
-
-            except Exception as e:
-                logging.error(f"Error processing node {feature}: {e}")
-                return 0.0001
+        # Iterate through the discrete parents
+        for p in node.disc_parents:
+            norm_val = str(row[p])
+            pvals[p] = norm_val
+            pvals_disc.append(norm_val)
+        # Process discrete nodes
+        if node.type == 'Discrete' or 'logit' in str(node.type).lower():
+            vals = X[node.name].value_counts(normalize=True).sort_index()
+            vals = [str(i) for i in vals.index.to_list()]
+            return self._process_discrete_node(feature, row, pvals, vals, fill_na)
+        # Process non-discrete nodes
+        else:
+            vals = X[node.name].value_counts(normalize=True).sort_index()
+            vals = [(i) for i in vals.index.to_list()]
+            return self._process_non_discrete_node(feature, row, pvals, vals, fill_na)
 
     def _process_discrete_node(self, feature, row, pvals, vals, fill_na):
         """
@@ -194,16 +183,18 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
             float: value of a new feature.
         """
 
-        obs_value = row[feature]
+        obs_value = str(row[feature])
+        if fill_na:
+            imputed_value = pd.Series(vals).value_counts(normalize=True).get(row[feature], 0.0)
+        else:
+            imputed_value = np.nan
         try:
-            dist = self.bn.get_dist((feature), pvals=pvals).get()
+            dist = self.bn.get_dist(str(feature), pvals=pvals).get()
             idx = dist[1].index(obs_value)
             return dist[0][idx]
         except:
-            if fill_na:
-                return pd.Series(vals).value_counts(normalize=True).get(row[feature], 0.0)
-            else:
-                return np.nan
+            logging.exception("Distribution not found for node %s and value %s; setting to %s", feature, str(obs_value), str(imputed_value))
+            return imputed_value
 
     def _process_non_discrete_node(self, feature, row, pvals, vals, fill_na):
         """
@@ -219,19 +210,20 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
             float: value of a new feature.
         """
         obs_value = row[feature]
+        if fill_na:
+            imputed_value = (pd.Series(vals) <= obs_value).mean() if isinstance(vals, list) else (vals <= obs_value).mean()
+        else:
+            imputed_value = np.nan
         try:
             dist = self.bn.get_dist(str(feature), pvals=pvals).get()
-            match dist:
-
-                case tuple() if len(dist) == 2:
-                    mean, variance = dist
-                    sigma = variance
-                    prob = norm.cdf(obs_value, loc=mean, scale=sigma)
-                    return prob
+            mean, variance = dist
+            if np.isnan(mean) or np.isnan(variance):
+                return imputed_value
+            sigma = variance
+            prob = norm.cdf(obs_value, loc=mean, scale=sigma)
+            if np.isnan(prob): # if std is 0
+                return imputed_value
+            return prob
         except:
-
-            logging.warning("dist not found for node %s:", feature)
-            if fill_na:
-                return  (pd.Series(vals) <= obs_value).mean() if isinstance(vals, list) else (vals <= obs_value).mean()
-            else:
-                return np.nan
+            logging.exception("Distribution not found for node %s and value %s; setting to %s", feature, str(obs_value), str(imputed_value))
+            return imputed_value

@@ -173,10 +173,9 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
         Processes a discrete node.
 
         Args:
-            node - the discrete node object.
             feature (str): the name of the feature (node).
             row (pd.Series): a row of data from the DataFrame.
-            pvals (list): list of parent values.
+            pvals (dict): list of parent values.
             vals: possible values of the 'feature'.
 
         Returns:
@@ -203,7 +202,7 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
         Args:
             feature (str): the name of the feature (node).
             row (pd.Series): a row of data from the DataFrame.
-            pvals (list): list of parent values.
+            pvals (dict): list of parent values.
             vals: possible values of the 'feature'.
 
         Returns:

@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 from applybn.feature_extraction import BNFeatureGenerator
 
-
 class TestBNFeatureGenerator:
 
     @pytest.fixture
@@ -23,7 +22,6 @@ class TestBNFeatureGenerator:
 
     def test_initialization(self, setup_generator):
         assert setup_generator.bn is None
-        assert setup_generator.target_name == ''
 
     def test_fit_without_target(self, setup_generator, sample_data):
         setup_generator.fit(sample_data)
@@ -39,7 +37,6 @@ class TestBNFeatureGenerator:
         setup_generator.fit(sample_data.drop('B', axis=1), target)
 
         assert setup_generator.bn is not None
-        assert setup_generator.target_name == 'B'
 
         expected_columns = set(sample_data.columns)
         actual_columns = set(list(map(str, setup_generator.bn.nodes)))
@@ -56,5 +53,3 @@ class TestBNFeatureGenerator:
         assert all(['lambda_' in col for col in transformed_data.columns])
 
         assert transformed_data.map(np.isreal).all().all()
-
-

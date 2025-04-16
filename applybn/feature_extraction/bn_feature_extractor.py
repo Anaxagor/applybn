@@ -182,7 +182,7 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
 
         obs_value = str(row[feature])
         if fill_na:
-            imputed_value = pd.Series(vals).value_counts(normalize=True).get(row[feature], 0.0)
+            imputed_value = pd.Series(vals).value_counts(normalize=True).get(obs_value, 0.0)
         else:
             imputed_value = np.nan
         try:

@@ -97,10 +97,7 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
             A new DataFrame with lambda-features.
         """
         if not self.bn:
-            logging.error(AttributeError,
-                          "Parameter learning wasn't done. Call fit method"
-                          )
-            return pd.DataFrame()  # Return an empty DataFrame to avoid further errors
+            raise AttributeError("Parameter learning wasn't done. Call fit method")
 
         results = []
         X_nodes = X.columns

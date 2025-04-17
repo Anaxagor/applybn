@@ -1,8 +1,15 @@
 from typing import Iterable, Optional, Union, Any, Callable
-from rich.progress import Progress, TextColumn, BarColumn, TaskProgressColumn, TimeRemainingColumn
+from rich.progress import (
+    Progress,
+    TextColumn,
+    BarColumn,
+    TaskProgressColumn,
+    TimeRemainingColumn,
+)
 from rich.console import Console
 from contextlib import contextmanager
 import time
+
 
 class ProgressManager:
     """Unified interface for progress bars across the library."""
@@ -14,13 +21,13 @@ class ProgressManager:
             TextColumn("[bold blue]{task.description}"),
             BarColumn(),
             TaskProgressColumn(),
-            TimeRemainingColumn()
+            TimeRemainingColumn(),
         )
 
     @staticmethod
-    def track(iterable: Iterable,
-              description: str = "Processing",
-              total: Optional[int] = None) -> Iterable:
+    def track(
+        iterable: Iterable, description: str = "Processing", total: Optional[int] = None
+    ) -> Iterable:
         """
         Iterate through an iterable with a progress bar.
 
@@ -58,6 +65,7 @@ class ProgressManager:
                 progress.update(task_id, advance=advance)
 
             yield update
+
 
 track = ProgressManager.track
 progress_context = ProgressManager.progress_context

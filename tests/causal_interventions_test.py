@@ -31,22 +31,39 @@ class TestInterventionCausalExplainer(unittest.TestCase):
     def test_train_model(self):
         """Test that the model is trained and stored properly."""
         self.explainer.train_model(self.model, self.X_train, self.y_train)
-        self.assertIsNotNone(self.explainer.clf, "The classifier should not be None after training.")
-        self.assertTrue(hasattr(self.explainer.clf, "predict"), "Trained model should have a predict method.")
+        self.assertIsNotNone(
+            self.explainer.clf, "The classifier should not be None after training."
+        )
+        self.assertTrue(
+            hasattr(self.explainer.clf, "predict"),
+            "Trained model should have a predict method.",
+        )
 
     def test_compute_confidence_uncertainty_train(self):
         """Test that confidence and uncertainty are computed on training data."""
         self.explainer.train_model(self.model, self.X_train, self.y_train)
         self.explainer.compute_confidence_uncertainty_train(self.X_train, self.y_train)
-        self.assertIsNotNone(self.explainer.confidence_train, "Confidence for training data should be computed.")
-        self.assertIsNotNone(self.explainer.aleatoric_uncertainty_train, "Aleatoric uncertainty for training data should be computed.")
+        self.assertIsNotNone(
+            self.explainer.confidence_train,
+            "Confidence for training data should be computed.",
+        )
+        self.assertIsNotNone(
+            self.explainer.aleatoric_uncertainty_train,
+            "Aleatoric uncertainty for training data should be computed.",
+        )
 
     def test_compute_confidence_uncertainty_test(self):
         """Test that confidence and uncertainty are computed on test data."""
         self.explainer.train_model(self.model, self.X_train, self.y_train)
         self.explainer.compute_confidence_uncertainty_test(self.X_test, self.y_test)
-        self.assertIsNotNone(self.explainer.confidence_test, "Confidence for test data should be computed.")
-        self.assertIsNotNone(self.explainer.aleatoric_uncertainty_test, "Aleatoric uncertainty for test data should be computed.")
+        self.assertIsNotNone(
+            self.explainer.confidence_test,
+            "Confidence for test data should be computed.",
+        )
+        self.assertIsNotNone(
+            self.explainer.aleatoric_uncertainty_test,
+            "Aleatoric uncertainty for test data should be computed.",
+        )
 
     def test_estimate_feature_impact(self):
         """Test that feature impact is estimated correctly."""
@@ -63,8 +80,12 @@ class TestInterventionCausalExplainer(unittest.TestCase):
             "There should be at least one feature effect estimated.",
         )
 
-    @patch.object(InterventionCausalExplainer, 'plot_aleatoric_uncertainty', autospec=True)
-    @patch.object(InterventionCausalExplainer, 'plot_top_feature_effects', autospec=True)
+    @patch.object(
+        InterventionCausalExplainer, "plot_aleatoric_uncertainty", autospec=True
+    )
+    @patch.object(
+        InterventionCausalExplainer, "plot_top_feature_effects", autospec=True
+    )
     def test_interpret_runs(self, mock_plot_feature_effects, mock_plot_uncertainty):
         """Test the full interpret pipeline runs end-to-end without error."""
         # We patch plotting methods to avoid rendering figures in a test environment.
@@ -76,18 +97,27 @@ class TestInterventionCausalExplainer(unittest.TestCase):
             y_test=self.y_test,
         )
         # Check that the model was trained
-        self.assertIsNotNone(self.explainer.clf, "Model was not trained in interpret method.")
+        self.assertIsNotNone(
+            self.explainer.clf, "Model was not trained in interpret method."
+        )
         # Check that confidence was computed
-        self.assertIsNotNone(self.explainer.confidence_train, "Confidence was not computed on train data.")
+        self.assertIsNotNone(
+            self.explainer.confidence_train,
+            "Confidence was not computed on train data.",
+        )
         # Check that feature impact was estimated
-        self.assertIsNotNone(self.explainer.feature_effects, "Feature effects were not estimated.")
+        self.assertIsNotNone(
+            self.explainer.feature_effects, "Feature effects were not estimated."
+        )
 
     def test_perform_intervention_without_estimated_effects(self):
         """Test that performing intervention without estimating feature effects raises an error."""
         with self.assertRaises(ValueError):
             self.explainer.perform_intervention(self.X_test, self.y_test)
 
-    @patch.object(InterventionCausalExplainer, 'plot_aleatoric_uncertainty', autospec=True)
+    @patch.object(
+        InterventionCausalExplainer, "plot_aleatoric_uncertainty", autospec=True
+    )
     def test_perform_intervention(self, mock_plot_uncertainty):
         """Test that intervention runs after feature effects are estimated."""
         # Train, compute confidence, estimate feature effects
@@ -114,6 +144,7 @@ class TestInterventionCausalExplainer(unittest.TestCase):
             "Aleatoric uncertainty test after intervention should be computed.",
         )
         mock_plot_uncertainty.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

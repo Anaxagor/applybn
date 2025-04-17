@@ -16,6 +16,7 @@ from applybn.core.logger import Logger
 
 logger = Logger(__name__)
 
+
 class CausalCNNExplainer:
     """Causal CNN Explainer for measuring filter importance in a convolutional neural network.
 

@@ -25,7 +25,9 @@ class InterventionCausalExplainer:
         Attributes:
             n_estimators: Number of estimators for Data-IQ.
         """
-        logger.info("Initializing InterventionCausalExplainer with %d estimators", n_estimators)
+        logger.info(
+            "Initializing InterventionCausalExplainer with %d estimators", n_estimators
+        )
         self.n_estimators = n_estimators
         self.clf = None
         self.dataiq_train = None
@@ -234,4 +236,3 @@ class InterventionCausalExplainer:
         self.estimate_feature_impact(X=X_train)
         self.plot_top_feature_effects()
         self.perform_intervention(X_test=X_test, y_test=y_test)
-

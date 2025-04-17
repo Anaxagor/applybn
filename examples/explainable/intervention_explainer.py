@@ -8,7 +8,6 @@ from sklearn.ensemble import (
 from applybn.explainable.causal_analysis import InterventionCausalExplainer
 
 
-
 # Example data loading function (replace with actual data)
 def load_data():
     from sklearn.datasets import load_breast_cancer

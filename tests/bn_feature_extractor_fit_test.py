@@ -32,6 +32,7 @@ def test_fit_without_target(sample_data):
     assert generator.num_classes is None
     assert generator.bn is not None
 
+
 @pytest.mark.skip(reason="errors w/o raise")
 def test_fit_with_target(sample_data, sample_target):
     generator = BNFeatureGenerator()
@@ -39,11 +40,13 @@ def test_fit_with_target(sample_data, sample_target):
     assert generator.num_classes == 2
     assert generator.bn is not None
 
+
 @pytest.mark.skip(reason="errors w/o raise")
 def test_fit_with_known_structure(sample_data, known_structure):
     generator = BNFeatureGenerator(known_structure)
     generator.fit(sample_data)
     assert set(generator.bn.edges()) == set(known_structure)
+
 
 @pytest.mark.skip(reason="errors w/o raise")
 def test_fit_with_black_list(sample_data):

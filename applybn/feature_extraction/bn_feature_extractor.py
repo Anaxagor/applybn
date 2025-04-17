@@ -38,14 +38,14 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
 
         encoder = preprocessing.LabelEncoder()
         discretizer = preprocessing.KBinsDiscretizer(
-            n_bins=5,
-            encode='ordinal',
-            strategy='kmeans',
-            subsample=None
+            n_bins = 5,
+            encode = 'ordinal',
+            strategy = 'kmeans',
+            subsample = None
         )
         preprocessor = pp.Preprocessor([('encoder', encoder), ('discretizer', discretizer)])
         target_name = None
-        if y is not (None):
+        if y is not None:
             target_name = y.name
             X = pd.concat([X, y], axis=1).reset_index(drop=True)
         clean_data = X
@@ -55,7 +55,6 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
 
         # Initializing BNEstimator for BN selection & fitting
         info = preprocessor.info
-        info =  {"types": info["types"], "signs": info['signs']}
         params = {}
         if target_name:
             bl = self.create_black_list(X, target_name)  # Edges to avoid
@@ -186,7 +185,7 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
         else:
             imputed_value = np.nan
         try:
-            dist = self.bn.get_dist(str(feature), pvals=pvals).get()
+            dist = self.bn.get_dist(feature, pvals=pvals).get()
             idx = dist[1].index(obs_value)
             return dist[0][idx]
         except:
@@ -212,7 +211,7 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
         else:
             imputed_value = np.nan
         try:
-            dist = self.bn.get_dist(str(feature), pvals=pvals).get()
+            dist = self.bn.get_dist(feature, pvals=pvals).get()
             mean, variance = dist
             if np.isnan(mean) or np.isnan(variance):
                 return imputed_value

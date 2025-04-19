@@ -79,4 +79,7 @@ smote_proba = clf_smote.predict_proba(X_test)[:, 1]
 | BNOverSampler   | 0.575    | 0.858   | 35.1     |
 | SMOTE           | 0.556    | 0.844   | 0.0      |
 
+![pairplot_comparison](https://github.com/user-attachments/assets/fd08ef62-ee89-4f5f-a84a-f7174d350a6e)
+
+
 Use BNOverSampler when interpretability and distribution preservation are critical, and computational resources are sufficient. 

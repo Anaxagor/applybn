@@ -80,5 +80,7 @@ print(f"- Total selected: {len(selected_features)} features")
 print(f"- True features retained: {len(true_features & selected_features)}/{30}")
 print(f"- Noise features selected: {len(selected_features - true_features)}")
 ```
+![ce_fs](https://github.com/user-attachments/assets/55f85792-306d-4beb-8d5c-395b841a0f1c)
+
 ## Conclusion
 This example demonstrates the method's robustness in real-world scenarios where datasets often contain many irrelevant or engineered features. The causal selection mechanism effectively identifies stable predictive relationships despite increasing noise pollution.

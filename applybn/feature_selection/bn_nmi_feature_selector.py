@@ -1,190 +1,142 @@
-from bamt.external.pyitlib.DiscreteRandomVariableUtils import entropy, entropy_joint
+import numpy as np
 from sklearn.feature_selection import SelectorMixin
 from sklearn.base import BaseEstimator
-import pandas as pd
-import numpy as np
-import logging
+from sklearn.preprocessing import KBinsDiscretizer
+from sklearn.utils.validation import check_X_y
+from bamt.external.pyitlib.DiscreteRandomVariableUtils import entropy, information_mutual
 
 
 class NMIFeatureSelector(BaseEstimator, SelectorMixin):
+    """Feature selection based on Normalized Mutual Information (NMI).
 
-    def __init__(self, threshhold=0.5, bin_count=100, verbose=False):
-        """
-        This class performs feature selection based on Normalized Mutual Information (NMI).
+    This selector performs a two-stage feature selection process:
+    1. Select features with NMI to the target above a threshold.
+    2. Remove redundant features based on pairwise NMI between features.
 
-        Args:
-            threshold (float): The minimum NMI to include a feature in the selection.
-            bin_count (int): Number of bins for float discretization.
-            verbose (bool): If True, logging intermediate information.
-        """
-        self.threshhold = threshhold
-        self.bin_count = bin_count
-        self.bin_labels = [i for i in range(self.bin_count)]
-        self.verbose = verbose
-        self.entropy_map = dict()
+    Parameters
+    ----------
+    threshold : float, optional (default=0.0)
+        The threshold value for the first stage selection. Features with NMI
+        greater than this value are retained after the first stage.
+    n_bins : int, optional (default=10)
+        The number of bins to use for discretizing continuous features.
 
-    def _discreticise(self, x, y=None):
-        """
-        Prepare data to feed into pyitlib drv.entropy
-        Calculate happenings of each event in descreticised feature
-        """
-        arr_x = np.array(x, dtype=int)
+    Attributes
+    ----------
+    nmi_features_target_ : ndarray of shape (n_features,)
+        The NMI between each feature and the target.
+    selected_features_ : ndarray of shape (n_selected_features,)
+        The indices of the selected features after both stages.
+    selected_mask_ : ndarray of shape (n_features,)
+        Boolean mask indicating selected features.
+    feature_names_in_ : ndarray of shape (n_features,)
+        Names of features seen during fit.
+    """
 
-        if y is None:
-            # if only one given, return bincount integers from 0 to max(x)
-            return np.bincount(arr_x, minlength=max(1, max(x) - min(x) + 1)).tolist()
+    def __init__(self, threshold=0.0, n_bins=10):
+        self.threshold = threshold
+        self.n_bins = n_bins
+
+    def fit(self, X, y):
+        """Fit the feature selector to the data.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            The training input samples.
+        y : array-like of shape (n_samples,)
+            The target values.
+
+        Returns
+        -------
+        self : object
+            Returns the instance itself.
+        """
+        
+        # Capture feature names BEFORE data conversion
+        if hasattr(X, 'columns'):
+            self.feature_names_in_ = X.columns.to_numpy()
         else:
-            arr_y = np.array(y, dtype=int)
-            x_min, x_max = arr_x.min(), arr_x.max()
-            y_min, y_max = arr_y.min(), arr_y.max()
+            self.feature_names_in_ = np.arange(X.shape[1])
+        
+        # Convert to numpy arrays after capturing names
+        X, y = check_X_y(X, y, dtype=None, force_all_finite=True)
 
-            hist, _, _ = np.histogram2d(
-                arr_x,
-                arr_y,
-                bins=[x_max - x_min + 1, y_max - y_min + 1],
-                range=[[x_min, x_max + 1], [y_min, y_max + 1]],
-            )
-            return hist.flatten().astype(int).tolist()
+        # Discretize continuous features and target
+        X_disc = self._discretize_features(X)
+        y_disc = self._discretize_target(y.reshape(-1, 1)).flatten()
 
-    def _normalized_mutual_information(self, a, b):
-        """
-        Calculate Normalized Mutual Information (NMI) for pair of features
+        # Compute NMI between each feature and target
+        mi = np.array([information_mutual(X_disc[:, i], y_disc) for i in range(X_disc.shape[1])])
+        h_y = entropy(y_disc)
+        h_features = np.array([entropy(X_disc[:, i]) for i in range(X_disc.shape[1])])
+        self.nmi_features_target_ = np.zeros_like(mi)
+        for i in range(len(mi)):
+            min_h = min(h_features[i], h_y)
+            self.nmi_features_target_[i] = mi[i] / min_h if min_h > 0 else 0.0
 
-        Args:
-            a, b - pair of pd.Series to calculate NMI.
-        """
-        if (a.name, None) not in self.entropy_map:
-            self.entropy_map[(a.name, None)] = float(entropy(self._discreticise(a)))
-        if (b.name, None) not in self.entropy_map:
-            self.entropy_map[(b.name, None)] = float(entropy(self._discreticise(b)))
-        if (a.name, b.name) not in self.entropy_map:
-            self.entropy_map[(a.name, b.name)] = float(
-                entropy_joint(self._discreticise(a, b))
-            )
+        # First stage: select features above threshold
+        first_stage_mask = self.nmi_features_target_ > self.threshold
+        selected_indices = np.where(first_stage_mask)[0]
 
-        Ha = self.entropy_map[(a.name, None)]
-        Hb = self.entropy_map[(b.name, None)]
-        Hab = self.entropy_map[(a.name, b.name)]
-        return (Ha + Hb - Hab) / (2 * max(Ha, Hb))
+        # Second stage: remove redundant features
+        keep = np.ones(len(selected_indices), dtype=bool)
+        nmi_selected = self.nmi_features_target_[selected_indices]
 
-    def _prepare_dataset(self, df: pd.DataFrame):
-        """
-        Prepare the dataset, discretize the fields, remove rows
-        Return a ready-to-use dataset
+        for j in range(len(selected_indices)):
+            fj_idx = selected_indices[j]
+            fj = X_disc[:, fj_idx]
+            nmi_j = nmi_selected[j]
+            h_fj = entropy(fj)
 
-        Args:
-            df - data frame to be cleaned.
-        """
+            for i in range(len(selected_indices)):
+                if i == j or not keep[i]:
+                    continue
+                fi_idx = selected_indices[i]
+                fi = X_disc[:, fi_idx]
+                nmi_i = nmi_selected[i]
 
-        def transform_column(col: pd.Series) -> pd.Series:
-            # Handle integer-type columns by enumerating unique values
-            if pd.api.types.is_integer_dtype(col.dtype):
-                mapping = {val: i for i, val in enumerate(col.unique())}
-                return col.map(mapping)
-            # Handle numeric columns (floats) using binning
-            elif pd.api.types.is_numeric_dtype(col.dtype):
-                binned = pd.cut(
-                    col, bins=self.bin_count, labels=self.bin_labels, duplicates="drop"
-                )
-                # Add an extra category for any values outside the bin ranges
-                return binned.cat.add_categories(self.bin_count + 1).fillna(
-                    self.bin_count + 1
-                )
-            # Handle other column types (e.g., strings)
-            else:
-                mapping = {val: i for i, val in enumerate(col.unique())}
-                return col.map(mapping)
+                if nmi_i > nmi_j:
+                    mi_pair = information_mutual(fi, fj)
+                    h_fi = entropy(fi)
+                    min_h_pair = min(h_fi, h_fj)
+                    nmi_pair = mi_pair / min_h_pair if min_h_pair > 0 else 0.0
 
-        # Apply the transform_column function to each column in the DataFrame
-        clean_df = df.apply(transform_column)
-        return clean_df
+                    if nmi_pair > nmi_j:
+                        keep[j] = False
+                        break  # No need to check other i's
 
-    def fit(self, X: pd.DataFrame, y: pd.Series = None):
-        if y is None:
-            return self
-
-        if X.shape[0] != y.shape[0]:
-            raise ValueError
-
-        df = X.copy()
-        df[y.name] = y
-        target = y.name
-        self.initial_features = list(X.columns)
-
-        clean_df = self._prepare_dataset(df)
-        if self.verbose:
-            logging.info("Dataset is ready")
-
-        nmi_map = dict()
-        self.entropy_map = dict()
-        pre_features = []
-
-        def first_selection(col: pd.Series) -> pd.Series:
-            if col.name != target:
-                if (col.name, target) not in nmi_map.keys():
-                    nmi_map[(col.name, target)] = self._normalized_mutual_information(
-                        col, clean_df[target]
-                    )
-                nmi = nmi_map[(col.name, target)]
-                if nmi > self.threshhold:
-                    pre_features.append(col.name)
-            return col
-
-        clean_df.apply(first_selection)
-
-        if self.verbose:
-            logging.info(
-                f"First selection done, {len(pre_features)} selected", pre_features
-            )
-
-        if len(pre_features) == 1:
-            self.features_selected = pre_features
-            self.feature_names_in_ = X.columns
-            self.n_features_in_ = X.shape[1]
-            self.is_fitted_ = True
-            self.X_ = X
-            self.y_ = y
-            return self
-
-        features = []
-
-        def second_selection(col: pd.Series) -> pd.Series:
-            if col1 != col.name and col1 != target and col.name != target:
-                if (col1, col.name) not in nmi_map:
-                    nmi_map[(col1, col.name)] = self._normalized_mutual_information(
-                        clean_df[col1], col
-                    )
-
-                nmi_tg_1 = nmi_map[(col1, target)]
-                nmi_tg_2 = nmi_map[(col.name, target)]
-                nmi_col_12 = nmi_map[(col1, col.name)]
-
-                if (nmi_tg_1 > nmi_tg_2) and (nmi_col_12 > nmi_tg_2):
-                    if col1 not in features:
-                        features.append(col1)
-            return col
-
-        for col1 in pre_features:
-            clean_df.apply(second_selection)
-
-        if self.verbose:
-            logging.info(
-                f"Second selection done, reduced: {len(pre_features)} -> {len(features)}"
-            )
-
-        self.entropy_map.clear()
-        self.features_selected = features
-        self.feature_names_in_ = X.columns
-        self.n_features_in_ = X.shape[1]
-        self.is_fitted_ = True
-        self.X_ = X
-        self.y_ = y
+        self.selected_features_ = selected_indices[keep]
+        self.selected_mask_ = np.zeros(X.shape[1], dtype=bool)
+        self.selected_mask_[self.selected_features_] = True
 
         return self
 
     def _get_support_mask(self):
-        mask = [
-            True if e in self.features_selected else False
-            for i, e in enumerate(self.initial_features)
-        ]
-        return np.array(mask)
+        return self.selected_mask_
+
+    def _discretize_features(self, X):
+        """Discretize continuous features using KBinsDiscretizer."""
+        X_disc = np.empty_like(X, dtype=np.int32)
+        for i in range(X.shape[1]):
+            col = X[:, i]
+            unique_vals = np.unique(col)
+            if len(unique_vals) > self.n_bins:
+                # Discretize continuous feature
+                discretizer = KBinsDiscretizer(n_bins=self.n_bins, encode='ordinal', strategy='uniform')
+                discretized_col = discretizer.fit_transform(col.reshape(-1, 1)).flatten().astype(np.int32)
+                X_disc[:, i] = discretized_col
+            else:
+                # Treat as discrete (convert to integers for pyitlib)
+                X_disc[:, i] = col.astype(np.int32)
+        return X_disc
+
+    def _discretize_target(self, y):
+        """Discretize target variable if continuous."""
+        unique_vals = np.unique(y)
+        if len(unique_vals) > self.n_bins:
+            discretizer = KBinsDiscretizer(n_bins=self.n_bins, encode='ordinal', strategy='uniform')
+            y_disc = discretizer.fit_transform(y).flatten().astype(np.int32)
+        else:
+            y_disc = y.astype(np.int32).flatten()
+        return y_disc

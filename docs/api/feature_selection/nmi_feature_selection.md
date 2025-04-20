@@ -9,7 +9,6 @@
 
 ```python
 from applybn.feature_selection.bn_nmi_feature_selector import NMIFeatureSelector
-from sklearn.ensemble import RandomForestClassifier
 
 selector = NMIFeatureSelector(threshold=0.5, n_bins=20)
 selector.fit(X_train, y_train)

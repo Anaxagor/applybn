@@ -84,6 +84,8 @@ plt.legend()
 plt.grid(True)
 plt.show()
 ```
+![output](https://github.com/user-attachments/assets/1023a03f-dcc0-4adf-804f-c0ae2e651268)
+
 ## Conclusion
 The `NMIFeatureSelector` effectively:
 - Identifies informative features in a real-world dataset.

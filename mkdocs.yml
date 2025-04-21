@@ -68,6 +68,8 @@ nav:
     - Concept Explainer: user-guide/explainable_module/concept_explainer.md
     - Interventional Explainer: user-guide/explainable_module/interventional_analysis.md
     - CNN Filter Analysis: user-guide/explainable_module/cnn_filter_analysis.md
+    - NMI-based Feature selection: user-guide/feature_selection/nmi_feature_selection.md
+    - Causal-based Feature selection: user-guide/feature_selection/causal_feature_selection.md
     # Add concepts and theoretical background?
   
   - API Reference:
@@ -81,19 +83,20 @@ nav:
           - Concepts Explanations: api/explainable/concepts_causal.md
           - Interventional Explanations: api/explainable/interventions_causal.md
           - CNN Filter Importance: api/explainable/cnn_filter_importance.md
-      - Data Mining:
-        - Feature extraction: api/feature_extraction.md
-        - Feature selection: api/feature_selection.md
-        - BN oversampling: api/bn_oversampling.md
+      - Feature selection methods:
+          - NMI-based Feature selection: api/feature_selection/nmi_feature_selection.md
+          - Causal-based Feature selection: api/feature_selection/causal_feature_selection.md
+      - Feature extraction:
+          - BN-based feature extraction: api/feature_extraction.md
       - Outlier detection:
           - api/outlier_detection/outlier_detection.md
           - Tabular outlier detection: api/outlier_detection/tabular_outliers.md
           - Time series outlier detection: api/outlier_detection/ts_outliers.md
-      - Synthetic data generation: api/synthetic_data_generation.md
   - Examples:
       - Tabular Data: examples/tabular_data.md
       - Time Series Data: examples/time_series_data.md
-      - Synthetic Data Generation: examples/synthetic_data_generation.md
+      - Feature Selection with NMIFeatureSelector: examples/nmi_feature_selection.md
+      - Robustness Analysis for Causal Feature Selection: examples/causal_feature_selection.md
       - Custom Estimators: examples/custom_estimators.md
 
   - Development and Contribution:

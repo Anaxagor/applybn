@@ -10,8 +10,20 @@ from applybn.explainable.causal_analysis import InterventionCausalExplainer
 
 
 class TestInterventionCausalExplainer(unittest.TestCase):
+    """
+    Tests the InterventionCausalExplainer class."""
+
     @classmethod
     def setUpClass(cls):
+        """
+        Loads and splits the breast cancer dataset for testing.
+
+            Args:
+                None
+
+            Returns:
+                None
+        """
         # Load sample data using breast cancer dataset
         data = load_breast_cancer()
         X = pd.DataFrame(data.data, columns=data.feature_names)
@@ -24,6 +36,15 @@ class TestInterventionCausalExplainer(unittest.TestCase):
         ) = train_test_split(X, y, test_size=0.2, random_state=42)
 
     def setUp(self):
+        """
+        Initializes the object under test before each test.
+
+            Args:
+                None
+
+            Returns:
+                None
+        """
         # Initialize the object under test before each test
         self.explainer = InterventionCausalExplainer(n_estimators=5)
         self.model = RandomForestClassifier(n_estimators=10, random_state=42)

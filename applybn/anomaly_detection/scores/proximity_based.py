@@ -8,11 +8,33 @@ import pandas as pd
 
 
 class ProximityBasedScore(Score):
+    """
+    Calculates proximity-based outlier scores for data."""
+
     def __init__(self, verbose: int, proximity_steps: int = 5):
+        """
+        Initializes the class with verbosity level and proximity steps.
+
+            Args:
+                verbose:  Controls the amount of debugging information printed to the console.
+                proximity_steps: The number of steps to consider when calculating proximity. Defaults to 5.
+
+            Returns:
+                None
+        """
         super().__init__(verbose)
         self.proximity_steps = proximity_steps
 
     def local_score(self, X: pd.DataFrame):
+        """
+        Calculates a local score based on the input DataFrame.
+
+          Args:
+            X: The input DataFrame used for calculating the score.
+
+          Returns:
+            float: The calculated local score.
+        """
         pass
 
     def score(self, X: pd.DataFrame) -> np.ndarray:

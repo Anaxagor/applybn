@@ -5,6 +5,18 @@ from applybn.imbalanced.over_sampling.bn_over_sampler import BNOverSampler
 
 
 def test_sampler_initialization():
+    """
+    Tests the initialization of the BNOverSampler class.
+
+        This test verifies that the class attributes are correctly set
+        during object creation with specified parameters.
+
+        Parameters:
+            None
+
+        Returns:
+            None
+    """
     sampler = BNOverSampler(class_column="target", strategy=100, shuffle=False)
     assert sampler.class_column == "target"
     assert sampler.strategy == 100
@@ -12,6 +24,20 @@ def test_sampler_initialization():
 
 
 def test_basic_oversampling(imbalanced_data):
+    """
+    Tests basic oversampling functionality.
+
+        This function tests that the BNOverSampler correctly resamples an imbalanced dataset,
+        resulting in a balanced dataset with the expected shape and class distribution.
+
+        Args:
+            imbalanced_data: The imbalanced DataFrame to be resampled.  Must contain a
+                             'class' column indicating the target variable and 'feature1',
+                             'feature2', and 'feature3' columns for features.
+
+        Returns:
+            None: This function asserts conditions based on the resampling result, but does not return a value.
+    """
     sampler = BNOverSampler(class_column="class", shuffle=True)
     X = imbalanced_data.drop(columns="class")
     y = imbalanced_data["class"]
@@ -29,6 +55,15 @@ def test_basic_oversampling(imbalanced_data):
 
 
 def test_custom_strategy(imbalanced_data):
+    """
+    Tests the BNOverSampler with a custom strategy.
+
+        Args:
+            imbalanced_data: The imbalanced dataset to be resampled.
+
+        Returns:
+            None: This function asserts conditions based on the resampling result and does not return a value.
+    """
     sampler = BNOverSampler(strategy=150, class_column="class")
     X = imbalanced_data.drop(columns="class")
     y = imbalanced_data["class"]

@@ -36,6 +36,20 @@ def mock_estimator(mocker):
 
 
 def generate_case(t="hybrid"):
+    """
+    Generates a mock data fixture with specified column types.
+
+        This function creates a pytest fixture that returns a MagicMock object
+        representing a DataFrame with columns and dtypes defined based on the input 't'.
+
+        Args:
+            t: A string indicating the desired case for column type definitions.
+               Valid values are "hybrid", "cont", "disc", "empty", and "invalid".
+               Defaults to "hybrid".
+
+        Returns:
+            A pytest fixture function that returns a MagicMock DataFrame object.
+    """
     match t:
         case "hybrid":
             column_types = {"node1": "float64", "node2": "int64", "node3": "object"}
@@ -75,26 +89,74 @@ mock_data_empty = generate_case("empty")
 
 
 def test_detect_bn_hybrid(mock_data_hybrid):
+    """
+    Tests the detect_bn method with hybrid batch normalization data.
+
+        Args:
+            mock_data_hybrid: Mock data representing a hybrid batch normalization scenario.
+
+        Returns:
+            None: This function asserts that the result of BNEstimator.detect_bn is "hybrid".
+    """
     result = BNEstimator.detect_bn(mock_data_hybrid)
     assert result == "hybrid"
 
 
 def test_detect_bn_disc(mock_data_disc):
+    """
+    Tests that detect_bn correctly identifies 'disc' data.
+
+        Args:
+            mock_data_disc: The mock discrete data to be tested with.
+
+        Returns:
+            None
+    """
     result = BNEstimator.detect_bn(mock_data_disc)
     assert result == "disc"
 
 
 def test_detect_bn_cont(mock_data_cont):
+    """
+    Tests the detect_bn method with continuous data.
+
+        Args:
+            mock_data_cont: Mock continuous data for testing.
+
+        Returns:
+            None
+            Asserts that the result of BNEstimator.detect_bn is "cont".
+    """
     result = BNEstimator.detect_bn(mock_data_cont)
     assert result == "cont"
 
 
 def test_detect_bn_invalid_node_types(mock_data_invalid):
+    """
+    Tests that detect_bn raises an error for invalid node types.
+
+        Args:
+            mock_data_invalid: Mock data containing nodes with invalid types.
+
+        Returns:
+            None
+            Raises NodesAutoTypingError if the function does not behave as expected.
+    """
     with pytest.raises(NodesAutoTypingError, match="{'node3'}"):
         BNEstimator.detect_bn(mock_data_invalid)
 
 
 def test_detect_bn_empty(mock_data_empty):
+    """
+    Tests that detect_bn returns None for empty data.
+
+        Args:
+            mock_data_empty: A mock dataset representing empty input data.
+
+        Returns:
+            None: This is a test function and does not explicitly return a value,
+                  but asserts that the BNEstimator.detect_bn method returns None.
+    """
     assert BNEstimator.detect_bn(mock_data_empty) is None
 
 
@@ -231,6 +293,15 @@ def test_fit_full_case(mock_estimator):
 
 
 def test_attribute_passing(estimator):
+    """
+    Tests that necessary attributes are passed to the estimator.
+
+        Args:
+            estimator: The estimator object being tested.
+
+        Returns:
+            None
+    """
     estimator.bn_ = MagicMock(name="bn", spec=HybridBN)
 
     assert hasattr(estimator, "get_info")

@@ -17,6 +17,19 @@ from applybn.anomaly_detection.static_anomaly_detector.tabular_detector import (
 
 
 def main():
+    """
+    Runs anomaly detection on the ecoli dataset with different TabularDetector configurations.
+
+        This function loads the ecoli dataset, trains three TabularDetector instances
+        with default settings, IQR estimation, and Isolation Forest respectively,
+        and then prints classification reports comparing their predictions to the true labels.
+
+        Args:
+            None
+
+        Returns:
+            None
+    """
     # run from applybn root or change path here
     data = pd.read_csv("applybn/anomaly_detection/data/tabular/ecoli.csv")
 

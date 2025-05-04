@@ -14,13 +14,37 @@ from applybn.explainable.nn_layers_importance import CausalCNNExplainer
 
 # Below is a small mock CNN for testing:
 class MockCNN(nn.Module):
+    """
+    A mock CNN model for demonstration purposes."""
+
     def __init__(self):
+        """
+        Initializes the MockCNN model.
+
+            This constructor defines and initializes the convolutional layers and
+            fully connected layer of a simple CNN for demonstration purposes.
+
+            Args:
+                None
+
+            Returns:
+                None
+        """
         super(MockCNN, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=4, kernel_size=3)
         self.conv2 = nn.Conv2d(in_channels=4, out_channels=2, kernel_size=3)
         self.fc = nn.Linear(2 * 24 * 24, 2)  # Adjust shape if needed
 
     def forward(self, x):
+        """
+        Performs a forward pass through the neural network.
+
+          Args:
+            x: The input tensor.
+
+          Returns:
+            The output tensor after passing through convolutional and fully connected layers.
+        """
         x = self.conv1(x)
         x = nn.functional.relu(x)
         x = self.conv2(x)
@@ -32,6 +56,17 @@ class MockCNN(nn.Module):
 
 # Generate random data for testing
 def create_mock_dataloader(num_samples=10, image_size=(3, 28, 28), num_classes=2):
+    """
+    Creates a mock dataloader for testing purposes.
+
+        Args:
+            num_samples: The number of samples in the dataset.
+            image_size: The size of the images (channels, height, width).
+            num_classes: The number of classes for classification.
+
+        Returns:
+            DataLoader: A DataLoader object containing randomly generated image and label tensors.
+    """
     torch.manual_seed(42)
     random.seed(42)
     np.random.seed(42)
@@ -44,7 +79,22 @@ def create_mock_dataloader(num_samples=10, image_size=(3, 28, 28), num_classes=2
 
 
 class TestCausalCNNExplainer(unittest.TestCase):
+    """
+    Tests for the CausalCNNExplainer class."""
+
     def setUp(self):
+        """
+        Sets up mock objects for testing.
+
+            Creates a mock CNN model, a mock data loader, and sets the device to CPU.
+            Also imports the CausalCNNExplainer class.
+
+            Args:
+                None
+
+            Returns:
+                None
+        """
         # Create a mock CNN and a mock DataLoader
         self.mock_model = MockCNN()
         self.mock_loader = create_mock_dataloader()
@@ -54,6 +104,15 @@ class TestCausalCNNExplainer(unittest.TestCase):
         self.CausalCNNExplainer = CausalCNNExplainer
 
     def test_initialization(self):
+        """
+        Tests the successful initialization of the CausalCNNExplainer.
+
+            Args:
+                None
+
+            Returns:
+                None
+        """
         explainer = self.CausalCNNExplainer(model=self.mock_model, device=self.device)
         self.assertIsNotNone(explainer, "Explainer should initialize successfully.")
         self.assertTrue(
@@ -61,6 +120,18 @@ class TestCausalCNNExplainer(unittest.TestCase):
         )
 
     def test_collect_data(self):
+        """
+        Tests the collect_data method to ensure filter outputs are collected.
+
+            This test instantiates a CausalCNNExplainer, calls collect_data with a mock data loader,
+            and asserts that the explainer's filter_outputs dictionary is populated with data for each layer index in the DAG.
+
+            Parameters:
+                None
+
+            Returns:
+                None
+        """
         explainer = self.CausalCNNExplainer(model=self.mock_model, device=self.device)
         explainer.collect_data(self.mock_loader)
         self.assertGreater(
@@ -76,6 +147,8 @@ class TestCausalCNNExplainer(unittest.TestCase):
         )
 
     def test_learn_structural_equations(self):
+        """
+        Tests the learn_structural_equations method."""
         explainer = self.CausalCNNExplainer(model=self.mock_model, device=self.device)
         explainer.collect_data(self.mock_loader)
         # Call learn_structural_equations after data collection
@@ -95,6 +168,19 @@ class TestCausalCNNExplainer(unittest.TestCase):
             )
 
     def test_prune_filters_by_importance(self):
+        """
+        Tests the pruning of filters based on their importance scores.
+
+            This test verifies that the `prune_filters_by_importance` method returns a
+            copy of the model with some filters zeroed out, indicating successful pruning.
+            It checks each layer in the pruned model to ensure at least one filter's weight is zero.
+
+            Args:
+                None
+
+            Returns:
+                None
+        """
         explainer = self.CausalCNNExplainer(model=self.mock_model, device=self.device)
         explainer.collect_data(self.mock_loader)
         explainer.learn_structural_equations()
@@ -112,6 +198,19 @@ class TestCausalCNNExplainer(unittest.TestCase):
                 )
 
     def test_prune_random_filters(self):
+        """
+        Tests the pruning of random filters in the model.
+
+            This test verifies that the `prune_random_filters` method returns a copy of the
+            model with some filters randomly zeroed out, and asserts that at least one filter
+            in each layer has been pruned.
+
+            Args:
+                None
+
+            Returns:
+                None
+        """
         explainer = self.CausalCNNExplainer(model=self.mock_model, device=self.device)
         explainer.collect_data(self.mock_loader)
         explainer.learn_structural_equations()
@@ -128,6 +227,15 @@ class TestCausalCNNExplainer(unittest.TestCase):
                 )
 
     def test_evaluate_model(self):
+        """
+        Tests the evaluate_model method to ensure it runs and returns a valid accuracy score.
+
+            Args:
+                None
+
+            Returns:
+                None
+        """
         explainer = self.CausalCNNExplainer(model=self.mock_model, device=self.device)
         # Evaluate without training to check if it runs
         accuracy = explainer.evaluate_model(self.mock_model, self.mock_loader)

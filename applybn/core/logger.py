@@ -3,6 +3,9 @@ from rich.logging import RichHandler
 
 
 class Logger(logging.Logger):
+    """
+    A singleton class for logging."""
+
     _instances = {}
 
     def __new__(cls, name, level=logging.INFO, log_file=None):

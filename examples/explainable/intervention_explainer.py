@@ -10,6 +10,18 @@ from applybn.explainable.causal_analysis import InterventionCausalExplainer
 
 # Example data loading function (replace with actual data)
 def load_data():
+    """
+    Loads and splits the breast cancer dataset.
+
+        This method loads the breast cancer dataset from scikit-learn,
+        creates Pandas DataFrames for features (X) and target variable (y),
+        and then splits the data into training and testing sets.
+
+        Returns:
+            tuple: A tuple containing the training features (X_train),
+                   testing features (X_test), training target (y_train),
+                   and testing target (y_test).
+    """
     from sklearn.datasets import load_breast_cancer
     from sklearn.model_selection import train_test_split
 

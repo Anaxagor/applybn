@@ -15,6 +15,15 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
     """
 
     def __init__(self):
+        """
+        Initializes the instance with a batch normalization layer set to None.
+
+            Args:
+                None
+
+            Returns:
+                None
+        """
         self.bn = None
 
     def fit(self, X: pd.DataFrame, y: pd.Series | None = None):

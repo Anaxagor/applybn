@@ -98,6 +98,19 @@ class EstimatorPipelineFactory:
 
     @property
     def default_preprocessor(self):
+        """
+        Returns a default preprocessor pipeline.
+
+            This method creates and returns a Preprocessor object configured with a
+            LabelEncoder for categorical features and a KBinsDiscretizer for numerical
+            features, using uniform width binning with 5 bins.
+
+            Args:
+                None
+
+            Returns:
+                Preprocessor: A preprocessor pipeline ready to be fit and transformed on data.
+        """
         encoder = pp.LabelEncoder()
         discretizer = pp.KBinsDiscretizer(
             n_bins=5, encode="ordinal", strategy="uniform"

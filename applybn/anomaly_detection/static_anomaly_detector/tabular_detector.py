@@ -87,6 +87,19 @@ class TabularDetector:
 
     @property
     def impacts(self):
+        """
+        Returns a dictionary of impact scores from the pipeline's scorer.
+
+            This method provides access to the proximity and model impact values
+            calculated by the underlying scoring mechanism within the pipeline.
+
+            Parameters:
+                None
+
+            Returns:
+                dict: A dictionary containing 'proximity' and 'model' keys, with their
+                      corresponding impact scores as values.
+        """
         return {
             "proximity": self.pipeline_.scorer.proximity_impact,
             "model": self.pipeline_.scorer.model_impact,
@@ -173,6 +186,17 @@ class TabularDetector:
             )
 
     def _validate_target_name(self, X):
+        """
+        Validates that the target name exists in the columns of the input DataFrame.
+
+            Args:
+                X: The input DataFrame.
+
+            Returns:
+                bool: True if the target name is valid and present in the DataFrame's
+                      columns, False otherwise.  Raises a KeyError if target_name is set
+                      but not found in X.
+        """
         if self.target_name is not None:
             if self.target_name not in X.columns:
                 raise KeyError(

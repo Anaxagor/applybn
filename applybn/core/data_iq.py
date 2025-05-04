@@ -6,6 +6,15 @@ import torch
 
 
 class DataIQSKLearn:
+    """
+    Computes data intelligence metrics based on model predictions.
+
+        This class calculates various uncertainty and reliability metrics
+        such as confidence, aleatoric uncertainty, epistemic variability,
+        correctness, entropy, and mutual information from model predictions
+        across multiple epochs.
+    """
+
     def __init__(self, X, y, sparse_labels: bool = False, model_type: str = "sklearn"):
         """
         The function takes in the training data and the labels, and stores them in the class variables X

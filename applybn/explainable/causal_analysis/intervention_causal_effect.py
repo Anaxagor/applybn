@@ -16,6 +16,12 @@ logger = Logger(__name__)
 
 
 class InterventionCausalExplainer:
+    """
+    InterventionCausalExplainer class for explaining model behavior through causal interventions.
+
+    This class uses Data-IQ to estimate feature impacts and perform interventions to
+    understand how changes in input features affect model confidence and uncertainty."""
+
     def __init__(self, n_estimators=10):
         """Initialize the ModelInterpreter.
 

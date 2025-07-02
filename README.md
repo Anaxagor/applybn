@@ -124,16 +124,36 @@ uv pip install -r pyproject.toml
 ```python
 import pandas as pd
 import numpy as np
+import warnings
+import logging
+import sys
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import KBinsDiscretizer
 from imblearn.pipeline import Pipeline as ImbPipeline
 from sklearn.linear_model import LogisticRegression
-
 from applybn.feature_selection.ce_feature_selector import CausalFeatureSelector
 from applybn.feature_extraction.bn_feature_extractor import BNFeatureGenerator
 from applybn.imbalanced.over_sampling.bn_over_sampler import BNOverSampler
 from applybn.anomaly_detection.static_anomaly_detector.tabular_detector import TabularDetector
+warnings.filterwarnings('ignore')
+logging.getLogger().setLevel(logging.CRITICAL)
+logging.disable(logging.CRITICAL)
+logging.getLogger('applybn').setLevel(logging.CRITICAL)
+logging.getLogger('applybn').disabled = True
+class NullWriter:
+    def write(self, txt): pass
+    def flush(self): pass
+original_stderr = sys.stderr
+sys.stderr = NullWriter()
 
+class CausalFeatureSelector2(CausalFeatureSelector):
+    def fit(self, X, y):
+        super().fit(X, y)
+        self.selected_features_mask_ = self.get_support()
+        return self
+        
+    def transform(self, X):
+        return X.iloc[:, self.selected_features_mask_]
 
 def generate_example_data(n_samples=200, n_features=5, n_cat_features=2, target_name='target_class', imbalance_ratio=0.1, random_state=42):
     """Генерирует синтетический несбалансированный набор данных."""
@@ -145,18 +165,18 @@ def generate_example_data(n_samples=200, n_features=5, n_cat_features=2, target_
     X_cat_df = pd.DataFrame()
     for i in range(n_cat_features):
         cat_feature_name = f'cat_feature_{i}'
-        temp_cont_for_cat = rng.rand(n_samples, 1)
+        temp_cont_for_cat = rng.rand(n_samples)
         n_bins_cat = rng.randint(2, 4)
         discretizer = KBinsDiscretizer(n_bins=n_bins_cat, encode='ordinal', strategy='uniform', subsample=None, random_state=rng)
-        X_cat_df[cat_feature_name] = discretizer.fit_transform(temp_cont_for_cat).astype(int).astype(str)
-        
+        # Сохраняем категориальные признаки как целые числа
+        X_cat_df[cat_feature_name] = discretizer.fit_transform(temp_cont_for_cat.reshape(-1, 1)).ravel().astype(int)
     X_df = pd.concat([X_cont_df, X_cat_df], axis=1)
     
     n_class1 = int(n_samples * imbalance_ratio)
     n_class0 = n_samples - n_class1
     y_array = np.array([0] * n_class0 + [1] * n_class1)
     rng.shuffle(y_array)
-    y_series = pd.Series(y_array, name=target_name)
+    y_series = pd.Series(y_array, name=target_name, dtype=int)
     return X_df, y_series
 
 # --- Основной пример ---
@@ -167,55 +187,40 @@ print("1. Генерация синтетических данных...")
 X_df, y_s = generate_example_data(n_samples=250, n_features=6, n_cat_features=2, target_name=TARGET_NAME, imbalance_ratio=0.15, random_state=42)
 X_train_df, X_test_df, y_train_s, y_test_s = train_test_split(X_df, y_s, test_size=0.3, random_state=42, stratify=y_s)
 print(f"   Обучающие данные: {X_train_df.shape}, Тестовые данные: {X_test_df.shape}")
-print(f"   Распределение цели (обучение):\\n{y_train_s.value_counts(normalize=True).to_string()}\n")
+print(f"   Распределение целевой переменной (обучение):\n{y_train_s.value_counts(normalize=True).to_string()}\n")
 
-# 2. Причинно-следственный отбор признаков
-print("2. Причинно-следственный отбор признаков...")
-selector = CausalFeatureSelector(n_bins=3) # n_bins=3 для небольших данных
-selector.fit(X_train_df.to_numpy(), y_train_s.to_numpy())
-selected_features_mask = selector.get_support()
+# 2. Обработка данных с обнаружением аномалий
+X_train_df = X_train_df.reset_index(drop=True)
+y_train_s = y_train_s.reset_index(drop=True)
+X_test_df = X_test_df.reset_index(drop=True)
+y_test_s = y_test_s.reset_index(drop=True)
+detector = TabularDetector(target_name=TARGET_NAME, additional_score="IF")
+X_train_df[TARGET_NAME] = y_train_s
+detector.fit(X_train_df)
+scores = detector.predict_scores(X_train_df)
+threshold = np.percentile(scores, 95)
+mask = scores <= threshold # Выбираем 5% самых аномальных примеров
+X_train_df = X_train_df[mask]
+y_train_s = X_train_df[TARGET_NAME]
+y_train_s = y_train_s.reset_index(drop=True)
+X_train_df = X_train_df.drop(columns=[TARGET_NAME])
+X_train_df = X_train_df.reset_index(drop=True)
 
-if not np.any(selected_features_mask):
-    print("   Предупреждение: CausalFeatureSelector не выбрал ни одного признака. Используются все признаки.")
-    X_train_selected_df = X_train_df.copy()
-    X_test_selected_df = X_test_df.copy()
-else:
-    X_train_selected_df = X_train_df.loc[:, selected_features_mask]
-    X_test_selected_df = X_test_df.loc[:, selected_features_mask]
-print(f"   Выбрано {len(X_train_selected_df.columns)} признаков: {X_train_selected_df.columns.tolist()}\n")
-
-# 3. Конвейер обработки (Генерация признаков, Передискретизация, Классификация)
-print("3. Конвейер обработки (BNFeatureGenerator, BNOverSampler, Classifier)...")
-X_train_selected_df.columns = X_train_selected_df.columns.astype(str)
-X_test_selected_df.columns = X_test_selected_df.columns.astype(str)
-
+# 3. Создание полного конвейера с отбором признаков, генерацией признаков, передискретизацией и классификацией
 processing_pipeline = ImbPipeline([
-    ('bn_feature_generator', BNFeatureGenerator()), 
-    ('oversampler', BNOverSampler(class_column=TARGET_NAME, strategy='minority', shuffle=True)),
+    ('feature_selector', CausalFeatureSelector2(n_bins=3)),
+    ('bn_features', BNFeatureGenerator()),
+    ('oversampler', BNOverSampler(class_column=TARGET_NAME, strategy='max_class', shuffle=True)),
     ('classifier', LogisticRegression(solver='liblinear', random_state=42))
+    
 ])
 
-processing_pipeline.fit(X_train_selected_df, y_train_s)
-pipeline_score = processing_pipeline.score(X_test_selected_df, y_test_s)
-print(f"   Точность конвейера на тесте: {pipeline_score:.4f}\n")
-
-# 4. Пример TabularDetector
-print("4. Обнаружение аномалий с помощью TabularDetector...")
-# TabularDetector ожидает target_name в входном DataFrame X.
-X_train_for_detector = X_train_selected_df.copy()
-X_train_for_detector[TARGET_NAME] = y_train_s
-
-detector = TabularDetector(target_name=TARGET_NAME, verbose=0) # verbose=0 для меньшего вывода
-detector.fit(X_train_for_detector) # y = None, так как цель находится в X
-anomaly_predictions_train = detector.predict(X_train_for_detector)
-print(f"   Аномалии в обучающих данных: {np.sum(anomaly_predictions_train)}/{len(anomaly_predictions_train)}")
-
-X_test_for_detector = X_test_selected_df.copy()
-X_test_for_detector[TARGET_NAME] = y_test_s
-test_anomaly_predictions = detector.predict(X_test_for_detector)
-print(f"   Аномалии в тестовых данных: {np.sum(test_anomaly_predictions)}/{len(test_anomaly_predictions)}\n")
-
-print("--- Пример завершен ---")
+# 4. Обучение и оценка конвейера
+print("\n2. Обучение полного конвейера...")
+processing_pipeline.fit(X_train_df, y_train_s)
+pipeline_score = processing_pipeline.score(X_test_df, y_test_s)
+print(f"   Точность конвейера на тестовых данных: {pipeline_score:.4f}\n")
+print("\n--- Пример завершен ---")
 ```
 
 ## Помощь и поддержка

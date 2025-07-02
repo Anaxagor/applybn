@@ -15,6 +15,5 @@ data = pd.read_csv('your_data.csv')
 generator = BNFeatureGenerator()
 generator.fit(data)
 
-new_features = generator.transform(data)
-data_combined = pd.concat([data, new_features], axis=1)
+data_with_features = generator.transform(data)
 ```

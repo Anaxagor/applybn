@@ -41,16 +41,13 @@ bn_feature_generator.fit(X=X_train, y=y_train)  # Fit the generator with trainin
 X_train_bn = bn_feature_generator.transform(X_train).reset_index(drop=True)
 X_test_bn = bn_feature_generator.transform(X_test).reset_index(drop=True)
 
-# Combine original and Bayesian features
-X_train_combined = pd.concat([X_train, X_train_bn], axis=1)
-X_test_combined = pd.concat([X_test, X_test_bn], axis=1)
 
 # Train with combined features
 print("\nTraining Decision Tree with combined features...")
-dt_combined = DecisionTreeClassifier(random_state=42)
-dt_combined.fit(X_train_combined, y_train)
-y_pred_combined = dt_combined.predict(X_test_combined)
+dt = DecisionTreeClassifier(random_state=42)
+dt.fit(X_train_bn, y_train)
+y_pred = dt.predict(X_test_bn)
 print("\nClassification Report with Original Features:")
 print(classification_report(y_test, y_pred_original))
 print("\nClassification Report with Combined Features:")
-print(classification_report(y_test, y_pred_combined))
+print(classification_report(y_test, y_pred))

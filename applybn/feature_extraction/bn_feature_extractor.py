@@ -121,7 +121,7 @@ class BNFeatureGenerator(BaseEstimator, TransformerMixin):
         if target_predictions is not None:
             result["lambda_" + target_name] = target_predictions
 
-        return result
+        return pd.concat([X, result], axis=1)
 
     def create_black_list(self, X: pd.DataFrame, y: Optional[str]):
         """

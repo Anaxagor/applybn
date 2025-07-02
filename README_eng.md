@@ -61,16 +61,36 @@ An example demonstrating how to use several components from the `applybn` librar
 ```python
 import pandas as pd
 import numpy as np
+import warnings
+import logging
+import sys
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import KBinsDiscretizer
 from imblearn.pipeline import Pipeline as ImbPipeline
 from sklearn.linear_model import LogisticRegression
-
 from applybn.feature_selection.ce_feature_selector import CausalFeatureSelector
 from applybn.feature_extraction.bn_feature_extractor import BNFeatureGenerator
 from applybn.imbalanced.over_sampling.bn_over_sampler import BNOverSampler
 from applybn.anomaly_detection.static_anomaly_detector.tabular_detector import TabularDetector
+warnings.filterwarnings('ignore')
+logging.getLogger().setLevel(logging.CRITICAL)
+logging.disable(logging.CRITICAL)
+logging.getLogger('applybn').setLevel(logging.CRITICAL)
+logging.getLogger('applybn').disabled = True
+class NullWriter:
+    def write(self, txt): pass
+    def flush(self): pass
+original_stderr = sys.stderr
+sys.stderr = NullWriter()
 
+class CausalFeatureSelector2(CausalFeatureSelector):
+    def fit(self, X, y):
+        super().fit(X, y)
+        self.selected_features_mask_ = self.get_support()
+        return self
+        
+    def transform(self, X):
+        return X.iloc[:, self.selected_features_mask_]
 
 def generate_example_data(n_samples=200, n_features=5, n_cat_features=2, target_name='target_class', imbalance_ratio=0.1, random_state=42):
     """Generates a synthetic imbalanced dataset."""
@@ -82,18 +102,18 @@ def generate_example_data(n_samples=200, n_features=5, n_cat_features=2, target_
     X_cat_df = pd.DataFrame()
     for i in range(n_cat_features):
         cat_feature_name = f'cat_feature_{i}'
-        temp_cont_for_cat = rng.rand(n_samples, 1)
+        temp_cont_for_cat = rng.rand(n_samples)
         n_bins_cat = rng.randint(2, 4)
         discretizer = KBinsDiscretizer(n_bins=n_bins_cat, encode='ordinal', strategy='uniform', subsample=None, random_state=rng)
-        X_cat_df[cat_feature_name] = discretizer.fit_transform(temp_cont_for_cat).astype(int).astype(str)
-        
+        # Keep categorical features as integers
+        X_cat_df[cat_feature_name] = discretizer.fit_transform(temp_cont_for_cat.reshape(-1, 1)).ravel().astype(int)
     X_df = pd.concat([X_cont_df, X_cat_df], axis=1)
     
     n_class1 = int(n_samples * imbalance_ratio)
     n_class0 = n_samples - n_class1
     y_array = np.array([0] * n_class0 + [1] * n_class1)
     rng.shuffle(y_array)
-    y_series = pd.Series(y_array, name=target_name)
+    y_series = pd.Series(y_array, name=target_name, dtype=int)
     return X_df, y_series
 
 # --- Main Example ---
@@ -104,55 +124,42 @@ print("1. Generating Synthetic Data...")
 X_df, y_s = generate_example_data(n_samples=250, n_features=6, n_cat_features=2, target_name=TARGET_NAME, imbalance_ratio=0.15, random_state=42)
 X_train_df, X_test_df, y_train_s, y_test_s = train_test_split(X_df, y_s, test_size=0.3, random_state=42, stratify=y_s)
 print(f"   Train data: {X_train_df.shape}, Test data: {X_test_df.shape}")
-print(f"   Target distribution (train):\\n{y_train_s.value_counts(normalize=True).to_string()}\n")
+print(f"   Target distribution (train):\n{y_train_s.value_counts(normalize=True).to_string()}\n")
 
-# 2. Causal Feature Selection
-print("2. Causal Feature Selection...")
-selector = CausalFeatureSelector(n_bins=3) # n_bins=3 for small data
-selector.fit(X_train_df.to_numpy(), y_train_s.to_numpy())
-selected_features_mask = selector.get_support()
+# 2. Process data with anomaly detection
+X_train_df = X_train_df.reset_index(drop=True)
+y_train_s = y_train_s.reset_index(drop=True)
+X_test_df = X_test_df.reset_index(drop=True)
+y_test_s = y_test_s.reset_index(drop=True)
+detector = TabularDetector(target_name=TARGET_NAME, additional_score="IF")
+X_train_df[TARGET_NAME] = y_train_s
+detector.fit(X_train_df)
+scores = detector.predict_scores(X_train_df)
+threshold = np.percentile(scores, 95)
+mask = scores <= threshold
 
-if not np.any(selected_features_mask):
-    print("   Warning: No features selected by CausalFeatureSelector. Using all features.")
-    X_train_selected_df = X_train_df.copy()
-    X_test_selected_df = X_test_df.copy()
-else:
-    X_train_selected_df = X_train_df.loc[:, selected_features_mask]
-    X_test_selected_df = X_test_df.loc[:, selected_features_mask]
-print(f"   Selected {len(X_train_selected_df.columns)} features: {X_train_selected_df.columns.tolist()}\n")
+X_train_df = X_train_df[mask]
+y_train_s = X_train_df[TARGET_NAME]
+y_train_s = y_train_s.reset_index(drop=True)
+X_train_df = X_train_df.drop(columns=[TARGET_NAME])
+X_train_df = X_train_df.reset_index(drop=True)
 
-# 3. Processing Pipeline (Feature Generation, Oversampling, Classification)
-print("3. Processing Pipeline (BNFeatureGenerator, BNOverSampler, Classifier)...")
-X_train_selected_df.columns = X_train_selected_df.columns.astype(str)
-X_test_selected_df.columns = X_test_selected_df.columns.astype(str)
-
+# 3. Create the full pipeline with feature selection, feature generation, oversampling, and classification
 processing_pipeline = ImbPipeline([
-    ('bn_feature_generator', BNFeatureGenerator()), 
-    ('oversampler', BNOverSampler(class_column=TARGET_NAME, strategy='minority', shuffle=True)),
+    ('feature_selector', CausalFeatureSelector2(n_bins=3)),
+    ('bn_features', BNFeatureGenerator()),
+    ('oversampler', BNOverSampler(class_column=TARGET_NAME, strategy='max_class', shuffle=True)),
     ('classifier', LogisticRegression(solver='liblinear', random_state=42))
 ])
 
-processing_pipeline.fit(X_train_selected_df, y_train_s)
-pipeline_score = processing_pipeline.score(X_test_selected_df, y_test_s)
+# 4. Fit and evaluate the pipeline
+print("\n2. Fitting complete pipeline...")
+processing_pipeline.fit(X_train_df, y_train_s)
+pipeline_score = processing_pipeline.score(X_test_df, y_test_s)
+
 print(f"   Pipeline test accuracy: {pipeline_score:.4f}\n")
 
-# 4. TabularDetector Example
-print("4. TabularDetector Anomaly Detection...")
-# TabularDetector expects target_name within the input DataFrame X.
-X_train_for_detector = X_train_selected_df.copy()
-X_train_for_detector[TARGET_NAME] = y_train_s
-
-detector = TabularDetector(target_name=TARGET_NAME, verbose=0) # verbose=0 for less output
-detector.fit(X_train_for_detector) # y is None as target is in X
-anomaly_predictions_train = detector.predict(X_train_for_detector)
-print(f"   Anomalies in training data: {np.sum(anomaly_predictions_train)}/{len(anomaly_predictions_train)}")
-
-X_test_for_detector = X_test_selected_df.copy()
-X_test_for_detector[TARGET_NAME] = y_test_s
-test_anomaly_predictions = detector.predict(X_test_for_detector)
-print(f"   Anomalies in test data: {np.sum(test_anomaly_predictions)}/{len(test_anomaly_predictions)}\n")
-
-print("--- Example Finished ---")
+print("\n--- Example Finished ---")
 ```
 
 ## Help and Support

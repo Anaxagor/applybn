@@ -30,7 +30,9 @@ class TestBNFeatureGenerator:
         setup_generator.fit(sample_data)
 
         assert setup_generator.bn is not None
-        assert set(list(map(str, setup_generator.bn.nodes))) == set(sample_data.columns)
+        expected_nodes = set(sample_data.columns)
+        actual_nodes = set(list(map(str, setup_generator.bn.nodes)))
+        assert actual_nodes == expected_nodes
         assert setup_generator.bn.nodes is not None
 
     def test_fit_with_target(self, setup_generator, sample_data):
@@ -52,7 +54,13 @@ class TestBNFeatureGenerator:
 
         assert isinstance(transformed_data, pd.DataFrame)
 
-        assert len(transformed_data.columns) == len(sample_data.columns)
-        assert all(["lambda_" in col for col in transformed_data.columns])
+        assert len(transformed_data.columns) == len(sample_data.columns) * 2
+        assert all(
+            [
+                "lambda_" in col
+                for col in transformed_data.columns[len(sample_data.columns) :]
+            ]
+        )
 
-        assert transformed_data.map(np.isreal).all().all()
+        lambda_columns = [col for col in transformed_data.columns if "lambda_" in col]
+        assert transformed_data[lambda_columns].map(np.isreal).all().all()

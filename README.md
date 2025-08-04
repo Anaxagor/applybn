@@ -88,7 +88,7 @@ applybn — это многоцелевой фреймворк с открыты
 
 ## Технические требования
 
-OS: Linux/MacOS
+OS: Linux/MacOS/Windows
 Python version: 3.11/3.12
 
 Требования к железу аналогичны требованиям Pytorch в зависимости от использования GPU/CPU/MPS.

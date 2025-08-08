@@ -1,0 +1,35 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+.venv/
+.env
+
+# VCS
+.git/
+.gitignore
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Test and coverage
+.coverage*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+
+# Build artifacts
+build/
+dist/
+
+# Notebooks caches
+.ipynb_checkpoints/
+
+# Node or other noise
+node_modules/

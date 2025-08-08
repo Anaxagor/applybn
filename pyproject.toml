@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "applybn"
-version = "0.1.0"
+version = "0.1.1"
 description = ""
 authors = ["jrzkaminski <jkaminski@niuitmo.ru>"]
 readme = "README.md"
@@ -32,7 +32,7 @@ jpype1 = "^1.5.2"
 bayesian-optimization = "^2.0.3"
 
 
-[tool.poetry.group.dev.dependencies]
+# [tool.poetry.group.dev.dependencies]
 pytest = "7.4.4"
 pytest-cov = "4.1.0"
 pytest-mock = "*"

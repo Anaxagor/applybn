@@ -23,7 +23,8 @@ jobs:
       run: |
         pip install setuptools==75.6.0
         pip install poetry
-        poetry install --with dev
+        poetry install
+        # poetry install --with dev
 
     - name: Run tests
       run: |

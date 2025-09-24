@@ -127,7 +127,13 @@ cd applybn
 uv pip install -r pyproject.toml
 ```
 
-3. Установите torch и torchvision с [официального сайта](https://pytorch.org/) в зависимости от OS/железа:
+2.1. Для запуска примеров установите проект в editable режиме
+
+```bash
+uv pip install -e .
+```
+
+3. (Опционально) Установите torch и torchvision с [официального сайта](https://pytorch.org/). Для использования torch "^2.5.0" на GPU необходима видеокарта с поддержкой CUDA 12. 
 
 ## Пример конвейера Scikit-learn
 

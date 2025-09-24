@@ -18,7 +18,7 @@ from applybn.anomaly_detection.static_anomaly_detector.tabular_detector import (
 
 def main():
     # run from applybn root or change path here
-    data = pd.read_csv("applybn/anomaly_detection/data/tabular/ecoli.csv")
+    data = pd.read_csv("data/anomaly_detection/tabular/ecoli.csv")
 
     detector_default = TabularDetector(target_name="y")
     detector_iqr = TabularDetector(target_name="y", model_estimation_method="iqr")

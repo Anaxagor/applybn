@@ -20,7 +20,7 @@ scipy = "1.14.1"
 scikit-learn = "^1.5.0"
 imbalanced-learn = "^0.13.0"
 torch = "^2.8.0"
-torchvision = "^0.23.0"
+torchvision = "0.23.0"
 statsmodels = "^0.14.0"
 opencv-python = "4.11.0.86"
 

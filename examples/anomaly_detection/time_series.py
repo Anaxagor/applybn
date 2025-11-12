@@ -31,7 +31,7 @@ def add_anomalies(df, anomaly_fraction=0.05, random_state=None):
 
 
 df_discrete = pd.read_csv(
-    "../../data/anomaly_detection/ts/meteor_discrete_example_data.csv"
+    "data/anomaly_detection/ts/meteor_discrete_example_data.csv"
 )
 
 df_anomaly, anomalies = add_anomalies(

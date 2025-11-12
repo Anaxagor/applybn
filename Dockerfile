@@ -14,8 +14,8 @@ RUN apt-get update \
         git \
         build-essential \
         locales \
-        # Java runtime for JPype/JVM usage
-        openjdk-17-jre-headless \
+        # Java runtime for JPype/JVM usage \
+        openjdk-21-jdk \
         # OpenCV runtime deps
         libgl1 \
         libglib2.0-0 \

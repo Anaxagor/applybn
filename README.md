@@ -95,6 +95,46 @@ Python version: 3.11/3.12
 
 ## Установка
 
+### Установка системных зависимостей
+Перед установкой applybn убедитесь, что у вас установлены системные зависимости.
+
+#### Linux
+Для этого обновите индексы репозиториев
+(это надо сделать обязательно, чтобы ставилась Java):
+
+```bash#
+sudo apt update
+```
+
+Установите необходимые пакеты для cv2:
+
+```bash
+sudo apt install -y libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 libgomp1 
+```
+
+Установите Java (требуется для работы с временными рядами):
+
+```bash
+sudo apt install -y openjdk-21-jdk
+```
+
+#### Windows
+# Установить JDK 21
+```
+winget install EclipseAdoptium.Temurin.21.JDK
+```
+
+# Обновить переменные окружения
+```shell
+$javaHome = "C:\Program Files\Eclipse Adoptium\jdk-21.0.2.13-hotspot"
+[Environment]::SetEnvironmentVariable("JAVA_HOME", $javaHome, "Machine")
+```
+
+# Перезапустить терминал и проверить
+```shell
+java -version
+```
+
 ### pip
 
 Чтобы установить applybn с помощью pip, используйте следующую команду
@@ -134,6 +174,39 @@ uv pip install -e .
 ```
 
 3. (Опционально) Установите torch и torchvision с [официального сайта](https://pytorch.org/). Для использования torch "^2.5.0" на GPU необходима видеокарта с поддержкой CUDA 12. 
+
+### Проблемы с установкой
+Если вы столкнулись с проблемами при установке, мы рекомендуем использовать контейнер Docker.
+
+#### Установка и работа в Docker
+1. Установите [Docker](https://docs.docker.com/get-docker/).
+2. Клонируйте репозиторий applybn:
+
+```bash
+git clone https://github.com/Anaxagor/applybn
+cd applybn
+```
+3. Постройте Docker-образ:
+
+```bash
+docker build -t applybn:latest .
+```
+
+4. Запустите контейнер:
+
+```bash
+docker run --ipc=host -it --rm applybn:latest bash
+```
+
+5. Внутри контейнера вы можете запускать скрипты с примерами.
+Например:
+```bash
+python examples/anomaly_detection/tabular.py
+```
+Или:
+```bash
+pytest -s tests
+```
 
 ## Пример конвейера Scikit-learn
 

@@ -192,6 +192,12 @@ cd applybn
 docker build -t applybn:latest .
 ```
 
+На Mac с чипом M1/M2 может потребоваться указать платформу:
+
+```bash
+docker build --platform linux/amd64 -t applybn:latest .
+```
+
 4. Запустите контейнер:
 
 ```bash

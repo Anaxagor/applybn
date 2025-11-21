@@ -199,13 +199,16 @@ docker run --ipc=host -it --rm applybn:latest bash
 ```
 
 5. Внутри контейнера вы можете запускать скрипты с примерами.
-Например:
+
+Обратите внимание, пожалуйста, что вы должны находиться в директории `/app` внутри контейнера.
+
+Оттуда вы можете запускать примеры, например:
 ```bash
-python examples/anomaly_detection/tabular.py
+poetry run python examples/anomaly_detection/tabular.py
 ```
 Или:
 ```bash
-pytest -s tests
+poetry run pytest -s tests
 ```
 
 ## Пример конвейера Scikit-learn
